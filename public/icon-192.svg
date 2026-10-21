@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="192" height="192">
+  <defs>
+    <linearGradient id="bgGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="50%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F2826" />
+    </linearGradient>
+    <linearGradient id="cartGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#bgGrad192)" stroke="#334155" stroke-width="8"/>
+  <g fill="none" stroke="url(#cartGrad192)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120 150h54l36 170h184l32-136H166" />
+    <circle cx="220" cy="370" r="20" fill="#10B981" />
+    <circle cx="380" cy="370" r="20" fill="#10B981" />
+  </g>
+  <circle cx="350" cy="140" r="44" fill="#3B82F6"/>
+  <path d="M336 140l10 10 18-18" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
