@@ -1149,8 +1149,8 @@ function setupEventListeners() {
     }
   });
 
-  // Reset Sample data button for students
-  document.getElementById('btn-load-sample').addEventListener('click', () => {
+  // Reset Sample data button for students (Rian Simulation: Juli, Ags, Des)
+  const handleReloadSimulation = () => {
     playTap();
     const result = DB.resetAllData();
     state.cart = result.cart;
@@ -1160,8 +1160,14 @@ function setupEventListeners() {
     renderSafetyCap();
     renderHistoryScreen();
     renderAnggaranScreen();
-    showToast('Data contoh anak rantau berhasil dimuat ulang!', 'refresh-cw');
-  });
+    showToast('Simulasi data Rian (Juli, Ags, Des) berhasil dimuat!', 'refresh-cw');
+  };
+
+  const btnLoadSample = document.getElementById('btn-load-sample');
+  if (btnLoadSample) btnLoadSample.addEventListener('click', handleReloadSimulation);
+
+  const btnLoadSampleHistory = document.getElementById('btn-load-sample-history');
+  if (btnLoadSampleHistory) btnLoadSampleHistory.addEventListener('click', handleReloadSimulation);
 
   // History Tab delegator (View Receipt, Copy to Cart)
   const historyContainer = document.getElementById('history-sessions-container');

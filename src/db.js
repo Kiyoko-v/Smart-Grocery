@@ -13,50 +13,61 @@ import {
 } from './firebase.js';
 
 const KEYS = {
-  CART: 'smart_grocery_cart_items_v2',
-  BUDGET: 'smart_grocery_budget_limit_v2',
-  HISTORY: 'smart_grocery_history_sessions_v2',
-  SETTINGS: 'smart_grocery_user_settings_v2'
+  CART: 'smart_grocery_cart_items_v3',
+  BUDGET: 'smart_grocery_budget_limit_v3',
+  HISTORY: 'smart_grocery_history_sessions_v3',
+  SETTINGS: 'smart_grocery_user_settings_v3'
 };
 
-// Seed baseline from previous month (September 2026) for out-of-town students
+// Baseline reference data from previous month (Desember 2026) for out-of-town students (Rian)
 const DEFAULT_PREVIOUS_MONTH_DATA = [
-  { id: 'ref-1', name: 'Beras Sania 5kg', category: 'Sembako', unit: 'pack', price: 72000, lastUpdated: '2026-09-05' },
-  { id: 'ref-2', name: 'Minyak Goreng 2L', category: 'Sembako', unit: 'liter', price: 34000, lastUpdated: '2026-09-05' },
-  { id: 'ref-3', name: 'Telur Ayam 1kg', category: 'Sembako', unit: 'kg', price: 28000, lastUpdated: '2026-09-05' },
-  { id: 'ref-4', name: 'Indomie Goreng (Pack isi 5)', category: 'Sembako', unit: 'pack', price: 15500, lastUpdated: '2026-09-05' },
-  { id: 'ref-5', name: 'Sabun Cuci Piring Mama Lemon 750ml', category: 'Dapur & Bumbu', unit: 'pack', price: 13000, lastUpdated: '2026-09-05' },
-  { id: 'ref-6', name: 'Biore Body Wash 450ml', category: 'Toiletries', unit: 'pack', price: 24500, lastUpdated: '2026-09-05' },
-  { id: 'ref-7', name: 'Shampoo Pantene 160ml', category: 'Toiletries', unit: 'botol', price: 27000, lastUpdated: '2026-09-05' },
-  { id: 'ref-8', name: 'Pasta Gigi Pepsodent 190g', category: 'Toiletries', unit: 'pcs', price: 14000, lastUpdated: '2026-09-05' },
-  { id: 'ref-9', name: 'Susu UHT Ultra Milk 1L', category: 'Minuman', unit: 'dus', price: 19500, lastUpdated: '2026-09-05' },
-  { id: 'ref-10', name: 'Deterjen Rinso 770g', category: 'Toiletries', unit: 'pack', price: 22000, lastUpdated: '2026-09-05' },
-  { id: 'ref-11', name: 'Kecap Manis Bango 520ml', category: 'Dapur & Bumbu', unit: 'pack', price: 25000, lastUpdated: '2026-09-05' },
-  { id: 'ref-12', name: 'Kopi Kapal Api Special Mix 10s', category: 'Minuman', unit: 'bungkus', price: 14500, lastUpdated: '2026-09-05' },
-  { id: 'ref-13', name: 'Nugget Fiesta 500g', category: 'Frozen & Segar', unit: 'pack', price: 46000, lastUpdated: '2026-09-05' }
+  { id: 'ref-1', name: 'Beras Sania 5kg', category: 'Sembako', unit: 'pack', price: 72000, lastUpdated: '2026-12-08' },
+  { id: 'ref-2', name: 'Minyak Goreng 2L', category: 'Sembako', unit: 'liter', price: 35000, lastUpdated: '2026-12-08' },
+  { id: 'ref-3', name: 'Telur Ayam 1kg', category: 'Sembako', unit: 'kg', price: 28000, lastUpdated: '2026-12-08' },
+  { id: 'ref-4', name: 'Indomie Goreng (Pack isi 5)', category: 'Sembako', unit: 'pack', price: 15500, lastUpdated: '2026-12-08' },
+  { id: 'ref-5', name: 'Sabun Cuci Piring Mama Lemon 750ml', category: 'Dapur & Bumbu', unit: 'pack', price: 13500, lastUpdated: '2026-12-08' },
+  { id: 'ref-6', name: 'Biore Body Wash 450ml', category: 'Toiletries', unit: 'pack', price: 34000, lastUpdated: '2026-12-08' },
+  { id: 'ref-7', name: 'Shampoo Pantene 160ml', category: 'Toiletries', unit: 'botol', price: 27000, lastUpdated: '2026-12-08' },
+  { id: 'ref-8', name: 'Pasta Gigi Pepsodent 190g', category: 'Toiletries', unit: 'pcs', price: 14000, lastUpdated: '2026-12-08' },
+  { id: 'ref-9', name: 'Susu UHT Ultra Milk 1L', category: 'Minuman', unit: 'dus', price: 20000, lastUpdated: '2026-12-08' },
+  { id: 'ref-10', name: 'Deterjen Rinso 770g', category: 'Toiletries', unit: 'pack', price: 22500, lastUpdated: '2026-12-08' },
+  { id: 'ref-11', name: 'Kecap Manis Bango 520ml', category: 'Dapur & Bumbu', unit: 'pack', price: 25000, lastUpdated: '2026-12-08' },
+  { id: 'ref-12', name: 'Kopi Kapal Api Special Mix 10s', category: 'Minuman', unit: 'bungkus', price: 14500, lastUpdated: '2026-12-08' },
+  { id: 'ref-13', name: 'Nugget Fiesta 500g', category: 'Frozen & Segar', unit: 'pack', price: 47000, lastUpdated: '2026-12-08' },
+  { id: 'ref-14', name: 'Air Mineral Galon Aqua 19L', category: 'Minuman', unit: 'galon', price: 22000, lastUpdated: '2026-12-08' },
+  { id: 'ref-15', name: 'Sarden ABC Saus Tomat 425g', category: 'Sembako', unit: 'kaleng', price: 25500, lastUpdated: '2026-12-08' },
+  { id: 'ref-16', name: 'Roti Tawar Kupas Sari Roti', category: 'Sembako', unit: 'pack', price: 17000, lastUpdated: '2026-12-08' },
+  { id: 'ref-17', name: 'Biskuit Roma Kelapa 300g', category: 'Camilan', unit: 'pack', price: 11500, lastUpdated: '2026-12-08' }
 ];
 
+// F-06 Historical Shopping Sessions for Juli, Agustus, and Desember 2026
 const DEFAULT_HISTORY_SESSIONS = [
   {
-    id: 'session-sep-2026',
-    title: 'Belanja Bulanan Kos - September 2026',
-    date: '2026-09-05T14:30:00Z',
-    monthLabel: 'September 2026',
-    budgetLimit: 750000,
-    totalSpent: 684500,
-    totalSavings: 42000,
+    id: 'session-dec-2026',
+    title: 'Belanja Persiapan Akhir Tahun - Desember 2026',
+    date: '2026-12-08T15:30:00Z',
+    monthLabel: 'Desember 2026',
+    budgetLimit: 800000,
+    totalSpent: 713600,
+    totalSavings: 34000,
     itemsCount: 16,
     items: [
-      { id: 'h-1', name: 'Beras Sania 5kg', category: 'Sembako', unit: 'pack', qty: 1, price: 72000, discount: { type: 'none' } },
-      { id: 'h-2', name: 'Minyak Goreng 2L', category: 'Sembako', unit: 'liter', qty: 1, price: 34000, discount: { type: 'none' } },
-      { id: 'h-3', name: 'Telur Ayam 1kg', category: 'Sembako', unit: 'kg', qty: 2, price: 28000, discount: { type: 'none' } },
-      { id: 'h-4', name: 'Indomie Goreng (Pack isi 5)', category: 'Sembako', unit: 'pack', qty: 3, price: 15500, discount: { type: 'none' } },
-      { id: 'h-5', name: 'Biore Body Wash 450ml', category: 'Toiletries', unit: 'pack', qty: 1, price: 24500, discount: { type: 'percent', percent: 10 } },
-      { id: 'h-6', name: 'Shampoo Pantene 160ml', category: 'Toiletries', unit: 'botol', qty: 1, price: 27000, discount: { type: 'none' } },
-      { id: 'h-7', name: 'Pasta Gigi Pepsodent 190g', category: 'Toiletries', unit: 'pcs', qty: 1, price: 14000, discount: { type: 'none' } },
-      { id: 'h-8', name: 'Susu UHT Ultra Milk 1L', category: 'Minuman', unit: 'dus', qty: 4, price: 19500, discount: { type: 'none' } },
-      { id: 'h-9', name: 'Deterjen Rinso 770g', category: 'Toiletries', unit: 'pack', qty: 1, price: 22000, discount: { type: 'none' } },
-      { id: 'h-10', name: 'Nugget Fiesta 500g', category: 'Frozen & Segar', unit: 'pack', qty: 2, price: 46000, discount: { type: 'percent', percent: 15 } }
+      { id: 'hd-1', name: 'Beras Sania 5kg', category: 'Sembako', unit: 'pack', qty: 1, price: 72000, discount: { type: 'none' } },
+      { id: 'hd-2', name: 'Minyak Goreng 2L', category: 'Sembako', unit: 'liter', qty: 1, price: 35000, discount: { type: 'none' } },
+      { id: 'hd-3', name: 'Telur Ayam 1kg', category: 'Sembako', unit: 'kg', qty: 2, price: 28000, discount: { type: 'none' } },
+      { id: 'hd-4', name: 'Indomie Goreng (Pack isi 5)', category: 'Sembako', unit: 'pack', qty: 4, price: 15500, discount: { type: 'none' } },
+      { id: 'hd-5', name: 'Biore Body Wash 450ml', category: 'Toiletries', unit: 'pack', qty: 1, price: 34000, discount: { type: 'percent', percent: 10 } },
+      { id: 'hd-6', name: 'Sabun Cuci Piring Mama Lemon 750ml', category: 'Dapur & Bumbu', unit: 'pack', qty: 1, price: 13500, discount: { type: 'none' } },
+      { id: 'hd-7', name: 'Deterjen Rinso 770g', category: 'Toiletries', unit: 'pack', qty: 1, price: 22500, discount: { type: 'none' } },
+      { id: 'hd-8', name: 'Pasta Gigi Pepsodent 190g', category: 'Toiletries', unit: 'pcs', qty: 2, price: 14000, discount: { type: 'none' } },
+      { id: 'hd-9', name: 'Susu UHT Ultra Milk 1L', category: 'Minuman', unit: 'dus', qty: 4, price: 20000, discount: { type: 'none' } },
+      { id: 'hd-10', name: 'Kecap Manis Bango 520ml', category: 'Dapur & Bumbu', unit: 'pack', qty: 1, price: 25000, discount: { type: 'none' } },
+      { id: 'hd-11', name: 'Kopi Kapal Api Special Mix 10s', category: 'Minuman', unit: 'bungkus', qty: 2, price: 14500, discount: { type: 'none' } },
+      { id: 'hd-12', name: 'Nugget Fiesta 500g', category: 'Frozen & Segar', unit: 'pack', qty: 2, price: 47000, discount: { type: 'nominal', nominal: 6000 } },
+      { id: 'hd-13', name: 'Shampoo Pantene 160ml', category: 'Toiletries', unit: 'botol', qty: 1, price: 27000, discount: { type: 'none' } },
+      { id: 'hd-14', name: 'Air Mineral Galon Aqua 19L', category: 'Minuman', unit: 'galon', qty: 3, price: 22000, discount: { type: 'none' } },
+      { id: 'hd-15', name: 'Sarden ABC Saus Tomat 425g', category: 'Sembako', unit: 'kaleng', qty: 2, price: 25500, discount: { type: 'none' } },
+      { id: 'hd-16', name: 'Roti Tawar Kupas Sari Roti', category: 'Sembako', unit: 'pack', qty: 2, price: 17000, discount: { type: 'none' } }
     ]
   },
   {
@@ -65,18 +76,60 @@ const DEFAULT_HISTORY_SESSIONS = [
     date: '2026-08-08T11:15:00Z',
     monthLabel: 'Agustus 2026',
     budgetLimit: 800000,
-    totalSpent: 732000,
-    totalSavings: 35000,
-    itemsCount: 18,
+    totalSpent: 717250,
+    totalSavings: 36250,
+    itemsCount: 16,
     items: [
       { id: 'ha-1', name: 'Beras Sania 5kg', category: 'Sembako', unit: 'pack', qty: 1, price: 70000, discount: { type: 'none' } },
       { id: 'ha-2', name: 'Minyak Goreng 2L', category: 'Sembako', unit: 'liter', qty: 1, price: 33500, discount: { type: 'none' } },
-      { id: 'ha-3', name: 'Telur Ayam 1kg', category: 'Sembako', unit: 'kg', qty: 2, price: 29000, discount: { type: 'none' } }
+      { id: 'ha-3', name: 'Telur Ayam 1kg', category: 'Sembako', unit: 'kg', qty: 2, price: 27500, discount: { type: 'none' } },
+      { id: 'ha-4', name: 'Indomie Goreng (Pack isi 5)', category: 'Sembako', unit: 'pack', qty: 4, price: 15500, discount: { type: 'none' } },
+      { id: 'ha-5', name: 'Biore Body Wash 450ml', category: 'Toiletries', unit: 'pack', qty: 2, price: 27500, discount: { type: 'percent', percent: 15 } },
+      { id: 'ha-6', name: 'Sabun Cuci Piring Mama Lemon 750ml', category: 'Dapur & Bumbu', unit: 'pack', qty: 1, price: 13000, discount: { type: 'none' } },
+      { id: 'ha-7', name: 'Deterjen Rinso 770g', category: 'Toiletries', unit: 'pack', qty: 1, price: 22000, discount: { type: 'none' } },
+      { id: 'ha-8', name: 'Pasta Gigi Pepsodent 190g', category: 'Toiletries', unit: 'pcs', qty: 2, price: 14000, discount: { type: 'none' } },
+      { id: 'ha-9', name: 'Susu UHT Ultra Milk 1L', category: 'Minuman', unit: 'dus', qty: 4, price: 19000, discount: { type: 'none' } },
+      { id: 'ha-10', name: 'Kecap Manis Bango 520ml', category: 'Dapur & Bumbu', unit: 'pack', qty: 1, price: 24500, discount: { type: 'none' } },
+      { id: 'ha-11', name: 'Kopi Kapal Api Special Mix 10s', category: 'Minuman', unit: 'bungkus', qty: 2, price: 14500, discount: { type: 'none' } },
+      { id: 'ha-12', name: 'Nugget Fiesta 500g', category: 'Frozen & Segar', unit: 'pack', qty: 2, price: 46000, discount: { type: 'nominal', nominal: 5000 } },
+      { id: 'ha-13', name: 'Shampoo Pantene 160ml', category: 'Toiletries', unit: 'botol', qty: 1, price: 26500, discount: { type: 'none' } },
+      { id: 'ha-14', name: 'Air Mineral Galon Aqua 19L', category: 'Minuman', unit: 'galon', qty: 3, price: 21500, discount: { type: 'none' } },
+      { id: 'ha-15', name: 'Sarden ABC Saus Tomat 425g', category: 'Sembako', unit: 'kaleng', qty: 2, price: 25000, discount: { type: 'none' } },
+      { id: 'ha-16', name: 'Biskuit Roma Kelapa 300g', category: 'Camilan', unit: 'pack', qty: 3, price: 11500, discount: { type: 'none' } }
+    ]
+  },
+  {
+    id: 'session-jul-2026',
+    title: 'Belanja Awal Masuk Kos - Juli 2026',
+    date: '2026-07-06T10:30:00Z',
+    monthLabel: 'Juli 2026',
+    budgetLimit: 750000,
+    totalSpent: 697000,
+    totalSavings: 25000,
+    itemsCount: 17,
+    items: [
+      { id: 'hj-1', name: 'Beras Sania 5kg', category: 'Sembako', unit: 'pack', qty: 1, price: 68000, discount: { type: 'none' } },
+      { id: 'hj-2', name: 'Minyak Goreng 2L', category: 'Sembako', unit: 'liter', qty: 1, price: 32000, discount: { type: 'none' } },
+      { id: 'hj-3', name: 'Telur Ayam 1kg', category: 'Sembako', unit: 'kg', qty: 2, price: 26000, discount: { type: 'none' } },
+      { id: 'hj-4', name: 'Indomie Goreng (Pack isi 5)', category: 'Sembako', unit: 'pack', qty: 4, price: 15500, discount: { type: 'none' } },
+      { id: 'hj-5', name: 'Biore Body Wash 450ml', category: 'Toiletries', unit: 'pack', qty: 1, price: 26000, discount: { type: 'none' } },
+      { id: 'hj-6', name: 'Sabun Cuci Piring Mama Lemon 750ml', category: 'Dapur & Bumbu', unit: 'pack', qty: 1, price: 12500, discount: { type: 'none' } },
+      { id: 'hj-7', name: 'Deterjen Rinso 770g', category: 'Toiletries', unit: 'pack', qty: 1, price: 21000, discount: { type: 'none' } },
+      { id: 'hj-8', name: 'Pasta Gigi Pepsodent 190g', category: 'Toiletries', unit: 'pcs', qty: 1, price: 13500, discount: { type: 'none' } },
+      { id: 'hj-9', name: 'Susu UHT Ultra Milk 1L', category: 'Minuman', unit: 'dus', qty: 4, price: 18500, discount: { type: 'none' } },
+      { id: 'hj-10', name: 'Kecap Manis Bango 520ml', category: 'Dapur & Bumbu', unit: 'pack', qty: 1, price: 24000, discount: { type: 'none' } },
+      { id: 'hj-11', name: 'Kopi Kapal Api Special Mix 10s', category: 'Minuman', unit: 'bungkus', qty: 2, price: 14000, discount: { type: 'none' } },
+      { id: 'hj-12', name: 'Nugget Fiesta 500g', category: 'Frozen & Segar', unit: 'pack', qty: 2, price: 45000, discount: { type: 'percent', percent: 10 } },
+      { id: 'hj-13', name: 'Shampoo Pantene 160ml', category: 'Toiletries', unit: 'botol', qty: 1, price: 26000, discount: { type: 'none' } },
+      { id: 'hj-14', name: 'Roti Tawar Kupas Sari Roti', category: 'Sembako', unit: 'pack', qty: 2, price: 16000, discount: { type: 'none' } },
+      { id: 'hj-15', name: 'Biskuit Roma Kelapa 300g', category: 'Camilan', unit: 'pack', qty: 3, price: 11000, discount: { type: 'none' } },
+      { id: 'hj-16', name: 'Air Mineral Galon Aqua 19L', category: 'Minuman', unit: 'galon', qty: 3, price: 21000, discount: { type: 'none' } },
+      { id: 'hj-17', name: 'Sarden ABC Saus Tomat 425g', category: 'Sembako', unit: 'kaleng', qty: 2, price: 24500, discount: { type: 'none' } }
     ]
   }
 ];
 
-// Initial demo cart
+// Initial demo cart for live testing: Directly tests F-01 to F-05 based on Rian's case study
 const DEFAULT_INITIAL_CART = [
   {
     id: 'cart-1',
@@ -87,7 +140,7 @@ const DEFAULT_INITIAL_CART = [
     price: 78000,
     discount: { type: 'none' },
     checked: true,
-    note: 'Stok sebulan anak rantau'
+    note: 'Stok sebulan anak rantau (Naik vs Des Rp 72rb)'
   },
   {
     id: 'cart-2',
@@ -98,18 +151,18 @@ const DEFAULT_INITIAL_CART = [
     price: 32000,
     discount: { type: 'stacked', tier1: 50, tier2: 20 },
     checked: true,
-    note: 'Promo Supermarket Diskon Tumpuk'
+    note: 'Promo Cuci Gudang 50%+20% Rian (Hemat Rp 38.400)'
   },
   {
     id: 'cart-3',
-    name: 'Telur Ayam 1kg',
+    name: 'Minyak Goreng 2L',
     category: 'Sembako',
-    unit: 'kg',
-    qty: 2,
-    price: 28000,
-    discount: { type: 'none' },
+    unit: 'liter',
+    qty: 1,
+    price: 35000,
+    discount: { type: 'nominal', nominal: 15000 },
     checked: true,
-    note: 'Protein harian kos'
+    note: 'Promo kupon kasir pot. langsung Rp 15.000'
   },
   {
     id: 'cart-4',
@@ -119,8 +172,8 @@ const DEFAULT_INITIAL_CART = [
     qty: 3,
     price: 15500,
     discount: { type: 'none' },
-    checked: false,
-    note: 'Makanan darurat tanggal tua'
+    checked: true,
+    note: 'Makanan darurat tanggal tua (Harga stabil)'
   },
   {
     id: 'cart-5',
@@ -129,9 +182,31 @@ const DEFAULT_INITIAL_CART = [
     unit: 'dus',
     qty: 2,
     price: 18000,
+    discount: { type: 'percent', percent: 10 },
+    checked: false,
+    note: 'Diskon 10% mingguan anak kos (Turun vs Des)'
+  },
+  {
+    id: 'cart-6',
+    name: 'Telur Ayam 1kg',
+    category: 'Sembako',
+    unit: 'kg',
+    qty: 2,
+    price: 28000,
+    discount: { type: 'none' },
+    checked: true,
+    note: 'Protein harian kos (Harga stabil vs Des)'
+  },
+  {
+    id: 'cart-7',
+    name: 'Sabun Pembersih Lantai Wipol 750ml',
+    category: 'Toiletries',
+    unit: 'pack',
+    qty: 1,
+    price: 16500,
     discount: { type: 'none' },
     checked: false,
-    note: 'Promo mingguan'
+    note: 'Item baru kebersihan kos Rian (Belum ada di riwayat)'
   }
 ];
 
