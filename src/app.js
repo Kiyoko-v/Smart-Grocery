@@ -1320,7 +1320,7 @@ function initApp() {
       renderAnggaranScreen();
       renderHistoryScreen();
       renderCloudStatus();
-      showToast('Data Cloud (users/venetta) tersinkronisasi!', 'cloud');
+      showToast('Data tersinkronisasi ke cloud!', 'cloud');
     }
   });
 

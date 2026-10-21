@@ -53,17 +53,17 @@ export function getFirebaseStatus() {
     return {
       connected: false,
       isPlaceholder: true,
-      label: 'Lokal (venetta)',
+      label: 'Lokal',
       badgeClass: 'badge-offline',
-      message: 'Mode Local-First aktif. Masukkan API Key Firebase asli untuk cloud realtime.'
+      message: 'Mode Local-First aktif. Tersimpan di penyimpanan perangkat.'
     };
   }
   return {
     connected: isInitialized,
     isPlaceholder: false,
-    label: 'Cloud: venetta',
+    label: 'Cloud Aktif',
     badgeClass: 'badge-online',
-    message: `Terhubung ke Firestore doc: users/${USER_DOC_ID}`
+    message: 'Terhubung ke sinkronisasi Cloud Firestore realtime.'
   };
 }
 
