@@ -1,17 +1,18 @@
-const CACHE_NAME = 'smart-grocery-v1';
+const CACHE_NAME = 'smart-grocery-v2';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/src/style.css',
-  '/src/app.js',
-  '/src/db.js',
-  '/src/calculator.js',
-  '/src/comparator.js',
-  '/src/audio.js',
-  '/manifest.json',
-  '/icon-192.svg',
-  '/icon-512.svg',
-  '/favicon.svg'
+  './',
+  './index.html',
+  './src/style.css',
+  './src/app.js',
+  './src/db.js',
+  './src/calculator.js',
+  './src/comparator.js',
+  './src/audio.js',
+  './src/firebase.js',
+  './manifest.json',
+  './icon-192.svg',
+  './icon-512.svg',
+  './favicon.svg'
 ];
 
 self.addEventListener('install', (event) => {
