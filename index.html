@@ -135,6 +135,23 @@
             <span id="hero-over-budget-msg">Peringatan: Total troli telah melampaui batas dompet!</span>
           </div>
         </section>
+
+        <!-- Shop Options: Supermarket / Toko Selector Bar (Elongated Bar below Safety Cap) -->
+        <div class="store-selector-bar" id="store-selector-trigger" title="Pilih atau Tambah Toko">
+          <div class="store-bar-left">
+            <div class="store-icon-box">
+              <i data-lucide="store" style="width: 15px; height: 15px;"></i>
+            </div>
+            <div class="store-text-box">
+              <span class="store-label">Toko / Supermarket:</span>
+              <span class="store-active-name" id="display-active-store-name">Superindo Kaliurang</span>
+            </div>
+          </div>
+          <div class="store-bar-right">
+            <span class="store-switch-badge">Ganti</span>
+            <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+          </div>
+        </div>
       </header>
 
       <!-- Scrollable Main Content Area -->
@@ -144,6 +161,28 @@
              TAB 1: BELANJA (TROLI SUPERMARKET)
              ================================================================= -->
         <section class="tab-screen active" id="tab-screen-belanja">
+
+          <!-- Checkout & Action Bar (Moved to Top directly below Shop Options Bar) -->
+          <div class="checkout-bar-container top-checkout-bar" id="trolley-checkout-bar">
+            <div class="checkout-stats-row">
+              <span class="checkout-total-title">Total Belanja Saat Ini:</span>
+              <span class="checkout-total-val" id="checkout-total-display">Rp 0</span>
+            </div>
+            <button class="btn-primary-checkout" id="btn-checkout-session">
+              <i data-lucide="check-circle" style="width: 18px; height: 18px;"></i>
+              <span>Selesaikan & Simpan Belanja</span>
+            </button>
+            <div style="display: flex; gap: 8px; justify-content: center; margin-top: 4px;">
+              <button class="btn-secondary-flat" id="btn-clear-cart">
+                <i data-lucide="trash-2" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
+                <span>Kosongkan Troli</span>
+              </button>
+              <button class="btn-secondary-flat" id="btn-load-sample">
+                <i data-lucide="refresh-cw" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
+                <span>Muat Simulasi Rian</span>
+              </button>
+            </div>
+          </div>
           
           <!-- Category Quick Filter Chips -->
           <nav class="category-filter-chips" id="cart-category-chips">
@@ -188,28 +227,6 @@
           <!-- Trolley Cart Items List -->
           <div class="cart-items-list" id="cart-items-container">
             <!-- Dynamically populated by app.js -->
-          </div>
-
-          <!-- Checkout & Action Bar -->
-          <div class="checkout-bar-container" id="trolley-checkout-bar">
-            <div class="checkout-stats-row">
-              <span class="checkout-total-title">Total Belanja Saat Ini:</span>
-              <span class="checkout-total-val" id="checkout-total-display">Rp 0</span>
-            </div>
-            <button class="btn-primary-checkout" id="btn-checkout-session">
-              <i data-lucide="check-circle" style="width: 18px; height: 18px;"></i>
-              <span>Selesaikan & Simpan Belanja</span>
-            </button>
-            <div style="display: flex; gap: 8px; justify-content: center; margin-top: 4px;">
-              <button class="btn-secondary-flat" id="btn-clear-cart">
-                <i data-lucide="trash-2" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
-                <span>Kosongkan Troli</span>
-              </button>
-              <button class="btn-secondary-flat" id="btn-load-sample">
-                <i data-lucide="refresh-cw" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
-                <span>Muat Simulasi Rian (Juli, Ags, Des)</span>
-              </button>
-            </div>
           </div>
 
         </section>
@@ -337,35 +354,33 @@
       </div>
 
       <!-- =================================================================
-           FLOATING BOTTOM NAVIGATION BAR (Lucide Icons & Ergonomics)
+           FLOATING BOTTOM NAVIGATION BAR (Ergonomic & Centered Plus Button)
            ================================================================= -->
       <nav class="bottom-nav-bar" id="bottom-nav-bar" aria-label="Navigasi Utama">
         <button class="nav-tab-btn active" data-tab="belanja" id="nav-tab-belanja">
-          <i data-lucide="shopping-cart" class="nav-icon" style="width: 22px; height: 22px;"></i>
+          <i data-lucide="shopping-cart" class="nav-icon" style="width: 20px; height: 20px;"></i>
           <span>Belanja</span>
           <span class="cart-nav-badge" id="nav-badge-cart-count">0</span>
         </button>
 
         <button class="nav-tab-btn" data-tab="riwayat" id="nav-tab-riwayat">
-          <i data-lucide="history" class="nav-icon" style="width: 22px; height: 22px;"></i>
+          <i data-lucide="history" class="nav-icon" style="width: 20px; height: 20px;"></i>
           <span>Riwayat</span>
         </button>
 
         <!-- Floating Ergonomic Center Add Button (Dual-Option: Manual / Barcode) -->
         <button class="nav-fab-btn" id="btn-floating-add-item" title="Tambah Barang ke Troli">
-          <i data-lucide="plus" style="width: 28px; height: 28px; stroke-width: 2.5;"></i>
-        </button>
-
-        <!-- Requirement 5: Prominent "Shop Options" pinned to Bottom Navigation Bar -->
-        <button class="nav-tab-btn shop-options-btn" id="btn-nav-shop-options" title="Shop Options (Troli & Ringkasan)">
-          <i data-lucide="sliders-horizontal" class="nav-icon" style="width: 22px; height: 22px;"></i>
-          <span>Shop Options</span>
-          <span class="shop-options-pill" id="nav-shop-options-total">Rp 0</span>
+          <i data-lucide="plus" style="width: 26px; height: 26px; stroke-width: 2.5;"></i>
         </button>
 
         <button class="nav-tab-btn" data-tab="anggaran" id="nav-tab-anggaran">
-          <i data-lucide="pie-chart" class="nav-icon" style="width: 22px; height: 22px;"></i>
+          <i data-lucide="pie-chart" class="nav-icon" style="width: 20px; height: 20px;"></i>
           <span>Anggaran</span>
+        </button>
+
+        <button class="nav-tab-btn" id="btn-nav-profil" title="Profil & Pengaturan">
+          <i data-lucide="user" class="nav-icon" style="width: 20px; height: 20px;"></i>
+          <span>Profil</span>
         </button>
       </nav>
 
@@ -1022,36 +1037,18 @@
               </div>
             </div>
 
-            <!-- Theme Switcher Card (Requirement 3: Dark Blue & Baby Blue) -->
-            <div class="theme-switcher-box">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 6px;">
+            <!-- Theme Switcher Row -->
+            <div class="hard-budget-calc-box" style="margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
                   <i data-lucide="palette" style="width: 16px; height: 16px; color: var(--color-brand);"></i>
-                  <span style="font-size: 13px; font-weight: 800; color: var(--text-primary);">Tema Tampilan (Color Theme)</span>
+                  <div>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Tema Tampilan</div>
+                    <div id="active-theme-label" style="font-size: 11px; color: var(--text-muted);">Mengikuti Sistem</div>
+                  </div>
                 </div>
-                <span id="active-theme-label" style="font-size: 10px; color: var(--color-brand); font-weight: 700;">System</span>
-              </div>
-              <p style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
-                Pilih antara Baby Blue cerah (#87CEEB) atau Midnight Blue kontras tinggi (#0F172A).
-              </p>
-
-              <div class="theme-options-grid">
-                <!-- Option 1: System Default -->
-                <button type="button" class="theme-option-btn" data-theme-choice="system" id="btn-theme-system">
-                  <div class="theme-preview-dot dot-system"></div>
-                  <span>System</span>
-                </button>
-
-                <!-- Option 2: Light Mode (Baby Blue Palette) -->
-                <button type="button" class="theme-option-btn" data-theme-choice="light" id="btn-theme-light">
-                  <div class="theme-preview-dot dot-light"></div>
-                  <span>Light (Baby Blue)</span>
-                </button>
-
-                <!-- Option 3: Dark Mode (Midnight Blue Palette) -->
-                <button type="button" class="theme-option-btn" data-theme-choice="dark" id="btn-theme-dark">
-                  <div class="theme-preview-dot dot-dark"></div>
-                  <span>Dark (Midnight)</span>
+                <button type="button" class="btn-secondary-flat" id="btn-profile-change-theme" style="padding: 4px 12px; border: 1px solid var(--border-medium);">
+                  <span>Ubah</span>
                 </button>
               </div>
             </div>
@@ -1112,6 +1109,113 @@
               <i data-lucide="send" style="width: 16px; height: 16px;"></i>
               <span>Kirim Tautan Pemulihan</span>
             </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- =================================================================
+           MODAL: TWITTER (X) STYLE THEME PICKER BOTTOM SHEET
+           Simple, elegant options without "baby blue" or "midnight" labels
+           ================================================================= -->
+      <aside class="modal-backdrop" id="modal-theme-picker-backdrop" aria-hidden="true">
+        <div class="bottom-sheet twitter-theme-sheet">
+          <div class="sheet-handle-bar"></div>
+          <div class="twitter-theme-header">
+            <h3>Pilih Tampilan</h3>
+            <p>Sesuaikan tampilan aplikasi Smart Grocery di perangkat Anda.</p>
+          </div>
+          <div class="twitter-theme-options">
+            <!-- Option 1: System Default -->
+            <div class="twitter-radio-option" data-theme-val="system" id="theme-opt-system">
+              <div class="tro-info">
+                <span class="tro-title">Mengikuti Sistem</span>
+                <span class="tro-desc">Menyesuaikan otomatis dengan tema perangkat Anda</span>
+              </div>
+              <div class="twitter-radio-circle">
+                <div class="radio-check-dot"></div>
+              </div>
+            </div>
+
+            <!-- Option 2: Light Mode -->
+            <div class="twitter-radio-option" data-theme-val="light" id="theme-opt-light">
+              <div class="tro-info">
+                <span class="tro-title">Light Mode</span>
+                <span class="tro-desc">Tampilan terang dan kontras tinggi</span>
+              </div>
+              <div class="twitter-radio-circle">
+                <div class="radio-check-dot"></div>
+              </div>
+            </div>
+
+            <!-- Option 3: Dark Mode -->
+            <div class="twitter-radio-option" data-theme-val="dark" id="theme-opt-dark">
+              <div class="tro-info">
+                <span class="tro-title">Dark Mode</span>
+                <span class="tro-desc">Tampilan gelap yang nyaman untuk mata</span>
+              </div>
+              <div class="twitter-radio-circle">
+                <div class="radio-check-dot"></div>
+              </div>
+            </div>
+          </div>
+          <div style="padding: 14px 18px 20px;">
+            <button type="button" class="btn-primary-checkout" id="btn-close-theme-picker" style="height: 44px;">
+              <span>Selesai</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- =================================================================
+           MODAL: STORE / SUPERMARKET SELECTOR & MANAGEMENT (SHOP OPTIONS)
+           Displays previously saved stores & allows adding new stores
+           ================================================================= -->
+      <aside class="modal-backdrop" id="modal-store-selector-backdrop" aria-hidden="true">
+        <div class="bottom-sheet" style="max-height: 80vh;">
+          <div class="sheet-handle-bar"></div>
+          <div class="sheet-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="store" style="width: 18px; height: 18px; color: var(--color-brand);"></i>
+              <h3>Pilih Toko Belanja</h3>
+            </div>
+            <button class="sheet-close-btn" id="btn-close-store-modal" aria-label="Tutup">
+              <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+          <div class="sheet-body">
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+              Pilih tempat Anda berbelanja hari ini. Toko ini akan disimpan ke riwayat struk:
+            </p>
+
+            <!-- Saved Stores List -->
+            <div class="saved-stores-list" id="saved-stores-container">
+              <!-- Dynamically populated from stores.js -->
+            </div>
+
+            <!-- Add New Store Toggle & Form -->
+            <div class="add-store-box" id="add-store-box" style="margin-top: 10px;">
+              <button type="button" class="btn-secondary-flat" id="btn-toggle-add-store-form" style="width: 100%; justify-content: center; height: 40px; border: 1.5px dashed var(--border-medium);">
+                <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+                <span>+ Tambah Toko Baru</span>
+              </button>
+
+              <div id="add-store-form" style="display: none; margin-top: 10px;">
+                <div class="form-group">
+                  <label class="form-label" for="input-new-store-name">Nama Toko / Supermarket Baru</label>
+                  <input type="text" class="input-large-text" id="input-new-store-name" placeholder="Misal: Lotte Mart, Grand Lucky, Pasar Kranggan...">
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                  <button type="button" class="btn-primary-checkout" id="btn-save-new-store" style="flex: 1; height: 40px; font-size: 13px;">
+                    <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+                    <span>Simpan & Pilih Toko</span>
+                  </button>
+                  <button type="button" class="btn-secondary-flat" id="btn-cancel-new-store" style="height: 40px;">
+                    <span>Batal</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </aside>

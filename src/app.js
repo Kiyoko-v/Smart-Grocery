@@ -40,6 +40,13 @@ import {
   onThemeChange
 } from './theme.js';
 import {
+  getSavedStores,
+  getActiveStore,
+  setActiveStore,
+  addCustomStore,
+  removeCustomStore
+} from './stores.js';
+import {
   getCurrentUser,
   onAuthStateChanged,
   signInWithGoogle,
@@ -94,6 +101,19 @@ function refreshIcons() {
   if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
+}
+
+/**
+ * Escape HTML to prevent XSS in dynamic templates
+ */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 /**
@@ -199,12 +219,6 @@ function renderSafetyCap() {
   if (navBadge) {
     navBadge.textContent = state.cart.length;
     navBadge.style.display = state.cart.length > 0 ? 'flex' : 'none';
-  }
-
-  // Update Shop Options bottom nav pill in real time (Requirement 5)
-  const navShopTotal = document.getElementById('nav-shop-options-total');
-  if (navShopTotal) {
-    navShopTotal.textContent = formatRupiah(summary.totalSpent);
   }
 
   // Quick summary in Belanja tab
@@ -1231,8 +1245,17 @@ function handleCheckoutSession() {
   playCheckout();
   vibrate([100, 50, 100, 50, 150]);
 
-  // Save session into DB (F-06)
+  // Save session into DB (F-06 with active store name)
+  const activeStore = getActiveStore();
+  const now = new Date();
+  const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+  const monthLabel = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+
   const savedSession = DB.checkoutCartSession({
+    title: `Belanja di ${activeStore} - ${monthLabel}`,
     budgetLimit: state.budget,
     items: state.cart,
     summary
@@ -1283,7 +1306,7 @@ function switchTab(tabName) {
 }
 
 /* ==========================================================================
-   Color Theme System Controls (Requirement 3)
+   Color Theme System Controls (Twitter X Style Bottom Sheet)
    ========================================================================== */
 function updateThemeUI(themeInfo) {
   const currentSetting = getCurrentThemeSetting();
@@ -1292,11 +1315,11 @@ function updateThemeUI(themeInfo) {
 
   if (label) {
     if (currentSetting === 'system') {
-      label.textContent = 'System Default';
+      label.textContent = 'Mengikuti Sistem';
     } else if (currentSetting === 'light') {
-      label.textContent = 'Light Mode (Baby Blue)';
+      label.textContent = 'Light Mode';
     } else {
-      label.textContent = 'Dark Mode (Midnight)';
+      label.textContent = 'Dark Mode';
     }
   }
 
@@ -1306,23 +1329,106 @@ function updateThemeUI(themeInfo) {
     refreshIcons();
   }
 
-  // Update active state in settings grid
+  // Update selected state in Twitter theme sheet
+  document.querySelectorAll('.twitter-radio-option').forEach(opt => {
+    opt.classList.toggle('selected', opt.dataset.themeVal === currentSetting);
+  });
+
+  // Update active state in legacy settings grid if present
   document.querySelectorAll('.theme-option-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.themeChoice === currentSetting);
   });
 }
 
-function handleToggleQuickTheme() {
+function openThemePickerModal() {
   playTap();
-  const current = getCurrentThemeSetting();
-  let next = 'light';
-  if (current === 'light') next = 'dark';
-  else if (current === 'dark') next = 'system';
-  else next = 'light';
+  const backdrop = document.getElementById('modal-theme-picker-backdrop');
+  if (backdrop) {
+    updateThemeUI();
+    backdrop.classList.add('active');
+    backdrop.setAttribute('aria-hidden', 'false');
+    refreshIcons();
+  }
+}
 
-  applyTheme(next);
-  updateThemeUI();
-  showToast(`Tema diubah: ${next === 'system' ? 'System Default' : next === 'light' ? 'Light (Baby Blue)' : 'Dark (Midnight)'}`, 'palette');
+function closeThemePickerModal() {
+  const backdrop = document.getElementById('modal-theme-picker-backdrop');
+  if (backdrop) {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+  }
+}
+
+/* ==========================================================================
+   Store / Supermarket Selector & Management (Shop Options Bar)
+   ========================================================================== */
+function renderStoreSelectorBar() {
+  const activeStore = getActiveStore();
+  const nameEl = document.getElementById('display-active-store-name');
+  if (nameEl) {
+    nameEl.textContent = activeStore;
+  }
+}
+
+function renderSavedStoresList() {
+  const container = document.getElementById('saved-stores-container');
+  if (!container) return;
+
+  const stores = getSavedStores();
+  const activeStore = getActiveStore();
+
+  container.innerHTML = stores.map(store => {
+    const isActive = store.name.toLowerCase() === activeStore.toLowerCase();
+    const iconName = store.icon || 'store';
+    return `
+      <div class="store-item-row ${isActive ? 'active' : ''}" data-store-name="${escapeHtml(store.name)}" data-store-id="${store.id}">
+        <div class="sir-left">
+          <div class="store-icon-box" style="width: 28px; height: 28px;">
+            <i data-lucide="${iconName}" style="width: 14px; height: 14px;"></i>
+          </div>
+          <span class="sir-name">${escapeHtml(store.name)}</span>
+        </div>
+        <div class="sir-right">
+          <i data-lucide="check" class="sir-check-icon" style="width: 16px; height: 16px;"></i>
+          ${!store.isDefault ? `
+            <button type="button" class="btn-delete-store" data-action="delete-store" data-store-id="${store.id}" title="Hapus Toko">
+              <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  refreshIcons();
+}
+
+function openStoreSelectorModal() {
+  playTap();
+  const backdrop = document.getElementById('modal-store-selector-backdrop');
+  if (!backdrop) return;
+
+  renderSavedStoresList();
+
+  // Reset add form state
+  const form = document.getElementById('add-store-form');
+  const toggleBtn = document.getElementById('btn-toggle-add-store-form');
+  const input = document.getElementById('input-new-store-name');
+  if (form) form.style.display = 'none';
+  if (toggleBtn) toggleBtn.style.display = 'flex';
+  if (input) input.value = '';
+
+  backdrop.classList.add('active');
+  backdrop.setAttribute('aria-hidden', 'false');
+  refreshIcons();
+}
+
+function closeStoreSelectorModal() {
+  const backdrop = document.getElementById('modal-store-selector-backdrop');
+  if (backdrop) {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+  }
 }
 
 /* ==========================================================================
@@ -1468,16 +1574,27 @@ function registerPWA() {
    Setup Global Event Listeners
    ========================================================================== */
 function setupEventListeners() {
-  // Navigation Tabs
-  document.getElementById('nav-tab-belanja').addEventListener('click', () => switchTab('belanja'));
-  document.getElementById('nav-tab-riwayat').addEventListener('click', () => switchTab('riwayat'));
-  document.getElementById('nav-tab-anggaran').addEventListener('click', () => switchTab('anggaran'));
+  // Navigation Tabs (5 slots: Belanja, Riwayat, Floating Add, Anggaran, Profil)
+  const navBelanja = document.getElementById('nav-tab-belanja');
+  if (navBelanja) navBelanja.addEventListener('click', () => switchTab('belanja'));
+
+  const navRiwayat = document.getElementById('nav-tab-riwayat');
+  if (navRiwayat) navRiwayat.addEventListener('click', () => switchTab('riwayat'));
+
+  const navAnggaran = document.getElementById('nav-tab-anggaran');
+  if (navAnggaran) navAnggaran.addEventListener('click', () => switchTab('anggaran'));
 
   // Requirement 4: Center Floating Add Button opens Dual-Option Choice Modal
-  document.getElementById('btn-floating-add-item').addEventListener('click', () => openDualAddModal());
+  const btnFloatingAdd = document.getElementById('btn-floating-add-item');
+  if (btnFloatingAdd) btnFloatingAdd.addEventListener('click', () => openDualAddModal());
 
-  // Requirement 5: Pinned "Shop Options" button
-  document.getElementById('btn-nav-shop-options').addEventListener('click', () => openShopOptionsModal());
+  // Bottom Navigation Profile Button
+  const btnNavProfil = document.getElementById('btn-nav-profil');
+  if (btnNavProfil) btnNavProfil.addEventListener('click', openProfileModal);
+
+  // Shop Options: Elongated Store Selector Bar (below Safety Cap)
+  const storeTrigger = document.getElementById('store-selector-trigger');
+  if (storeTrigger) storeTrigger.addEventListener('click', openStoreSelectorModal);
 
   // Dual-Option modal listeners
   document.getElementById('btn-choice-manual').addEventListener('click', () => {
@@ -1619,11 +1736,43 @@ function setupEventListeners() {
     });
   }
 
-  // Theme Switcher Quick Header Button & Settings
+  // Twitter (X) Style Theme Picker Modal Listeners
   const themeBtn = document.getElementById('btn-toggle-theme');
   if (themeBtn) {
-    themeBtn.addEventListener('click', handleToggleQuickTheme);
+    themeBtn.addEventListener('click', openThemePickerModal);
   }
+
+  const profileThemeBtn = document.getElementById('btn-profile-change-theme');
+  if (profileThemeBtn) {
+    profileThemeBtn.addEventListener('click', openThemePickerModal);
+  }
+
+  const closeThemePickerBtn = document.getElementById('btn-close-theme-picker');
+  if (closeThemePickerBtn) {
+    closeThemePickerBtn.addEventListener('click', closeThemePickerModal);
+  }
+
+  const themePickerBackdrop = document.getElementById('modal-theme-picker-backdrop');
+  if (themePickerBackdrop) {
+    themePickerBackdrop.addEventListener('click', (e) => {
+      if (e.target.id === 'modal-theme-picker-backdrop') closeThemePickerModal();
+    });
+  }
+
+  document.querySelectorAll('.twitter-radio-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      playTap();
+      const val = opt.dataset.themeVal;
+      applyTheme(val);
+      updateThemeUI();
+      const labelMap = {
+        system: 'Mengikuti Sistem',
+        light: 'Light Mode',
+        dark: 'Dark Mode'
+      };
+      showToast(`Tema diterapkan: ${labelMap[val] || val}`, 'palette');
+    });
+  });
 
   document.querySelectorAll('[data-theme-choice]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1631,9 +1780,102 @@ function setupEventListeners() {
       const choice = btn.dataset.themeChoice;
       applyTheme(choice);
       updateThemeUI();
-      showToast(`Tema diterapkan: ${choice === 'system' ? 'System Default' : choice === 'light' ? 'Light (Baby Blue)' : 'Dark (Midnight)'}`, 'palette');
+      const labelMap = {
+        system: 'Mengikuti Sistem',
+        light: 'Light Mode',
+        dark: 'Dark Mode'
+      };
+      showToast(`Tema diterapkan: ${labelMap[choice] || choice}`, 'palette');
     });
   });
+
+  // Store / Supermarket Selector Modal Listeners
+  const closeStoreBtn = document.getElementById('btn-close-store-modal');
+  if (closeStoreBtn) {
+    closeStoreBtn.addEventListener('click', closeStoreSelectorModal);
+  }
+
+  const storeModalBackdrop = document.getElementById('modal-store-selector-backdrop');
+  if (storeModalBackdrop) {
+    storeModalBackdrop.addEventListener('click', (e) => {
+      if (e.target.id === 'modal-store-selector-backdrop') closeStoreSelectorModal();
+    });
+  }
+
+  const savedStoresContainer = document.getElementById('saved-stores-container');
+  if (savedStoresContainer) {
+    savedStoresContainer.addEventListener('click', (e) => {
+      // Delete store
+      const delBtn = e.target.closest('[data-action="delete-store"]');
+      if (delBtn) {
+        e.stopPropagation();
+        playTap();
+        const storeId = delBtn.dataset.storeId;
+        removeCustomStore(storeId);
+        renderSavedStoresList();
+        renderStoreSelectorBar();
+        showToast('Toko dihapus dari daftar.', 'trash-2');
+        return;
+      }
+
+      // Select store
+      const row = e.target.closest('.store-item-row');
+      if (row) {
+        playTap();
+        const storeName = row.dataset.storeName;
+        setActiveStore(storeName);
+        renderStoreSelectorBar();
+        closeStoreSelectorModal();
+        showToast(`Toko aktif: ${storeName}`, 'store');
+      }
+    });
+  }
+
+  const btnToggleAddStore = document.getElementById('btn-toggle-add-store-form');
+  const addStoreForm = document.getElementById('add-store-form');
+  const btnCancelNewStore = document.getElementById('btn-cancel-new-store');
+  const btnSaveNewStore = document.getElementById('btn-save-new-store');
+  const inputNewStore = document.getElementById('input-new-store-name');
+
+  if (btnToggleAddStore) {
+    btnToggleAddStore.addEventListener('click', () => {
+      playTap();
+      btnToggleAddStore.style.display = 'none';
+      if (addStoreForm) addStoreForm.style.display = 'block';
+      if (inputNewStore) {
+        inputNewStore.value = '';
+        inputNewStore.focus();
+      }
+    });
+  }
+
+  if (btnCancelNewStore) {
+    btnCancelNewStore.addEventListener('click', () => {
+      playTap();
+      if (addStoreForm) addStoreForm.style.display = 'none';
+      if (btnToggleAddStore) btnToggleAddStore.style.display = 'flex';
+    });
+  }
+
+  if (btnSaveNewStore) {
+    btnSaveNewStore.addEventListener('click', () => {
+      playTap();
+      const val = inputNewStore ? inputNewStore.value.trim() : '';
+      if (!val) {
+        showToast('Nama toko tidak boleh kosong!', 'alert-circle');
+        return;
+      }
+      try {
+        const result = addCustomStore(val);
+        renderSavedStoresList();
+        renderStoreSelectorBar();
+        closeStoreSelectorModal();
+        showToast(`Toko "${result.store.name}" berhasil dipilih!`, 'check-circle');
+      } catch (err) {
+        showToast(err.message, 'alert-circle');
+      }
+    });
+  }
 
   // User Profile & Authentication Listeners (Requirement 1)
   document.getElementById('btn-open-profile-modal').addEventListener('click', openProfileModal);
@@ -2245,6 +2487,7 @@ function initApp() {
   });
 
   renderSafetyCap();
+  renderStoreSelectorBar();
   renderCartItems();
   renderMostFrequentlyBought();
   renderAnggaranScreen();
