@@ -1,6 +1,13 @@
 /**
  * Smart Grocery & Budget Safety Tracker - Core Application
- * Handles SRS Requirements F-01 through F-06
+ * Handles SRS Requirements F-01 through F-06 and all Extended Systems:
+ * 1. Authentication & Cloud Persistence (Google OAuth, Email/Password, Phone SMS OTP)
+ * 2. History & "Most Frequently Bought" Smart Lists with 1-Tap Re-Add
+ * 3. Color Theme System (Dark Blue Midnight & Baby Blue Light)
+ * 4. Dual-Option "Add Product" (Manual autocomplete & Barcode camera scanner)
+ * 5. Pinned Bottom Navigation "Shop Options" Cart Access Sheet
+ * 6. Hard Budget Limit Protection (Auto-Block Over-Budget Items & Overage Calculator)
+ * 7. Accurate Price Trend & Repurchase Analytics (100% precise unit pricing & SVG trend charts)
  */
 
 import './style.css';
@@ -24,6 +31,46 @@ import {
 } from './audio.js';
 import { getFirebaseStatus } from './firebase.js';
 
+// New Feature Modules
+import {
+  initTheme,
+  applyTheme,
+  getCurrentThemeSetting,
+  getResolvedTheme,
+  onThemeChange
+} from './theme.js';
+import {
+  getCurrentUser,
+  onAuthStateChanged,
+  signInWithGoogle,
+  signInWithEmail,
+  signUpWithEmail,
+  requestPasswordReset,
+  sendPhoneOTP,
+  verifyPhoneOTP,
+  signOutUser
+} from './auth.js';
+import {
+  checkBudgetLimitEnforcement,
+  showHardBudgetAlertModal,
+  closeHardBudgetAlertModal,
+  getPendingBlockedAction
+} from './budgetProtection.js';
+import {
+  calculateExactPriceChange,
+  getProductPurchaseHistory,
+  getMostFrequentlyBoughtItems,
+  openPriceTrendModal,
+  closePriceTrendModal
+} from './priceAnalytics.js';
+import {
+  startCameraScanner,
+  stopCameraScanner,
+  toggleTorch,
+  handleDetectedBarcode,
+  BARCODE_PRODUCT_DATABASE
+} from './scanner.js';
+
 // Global App State
 const state = {
   cart: [],
@@ -33,7 +80,11 @@ const state = {
   activeFilter: 'ALL',
   editingItemId: null,
   deferredInstallPrompt: null,
-  currentDiscountConfig: { type: 'none', percent: 0, tier1: 50, tier2: 20, nominal: 0 }
+  currentDiscountConfig: { type: 'none', percent: 0, tier1: 50, tier2: 20, nominal: 0 },
+  emailAuthMode: 'login', // 'login' | 'signup'
+  phoneTimerInterval: null,
+  pendingPhoneTarget: '',
+  isMostBoughtCollapsed: false
 };
 
 /**
@@ -63,7 +114,7 @@ function showToast(message, icon = 'info') {
     toast.style.transform = 'translateY(-10px)';
     toast.style.transition = 'all 0.3s ease';
     setTimeout(() => toast.remove(), 300);
-  }, 2600);
+  }, 2800);
 }
 
 /**
@@ -105,7 +156,6 @@ function renderSafetyCap() {
   // Meter fill capped at 100% width visually, but percent text shows true value
   const fillWidth = Math.min(100, summary.budgetUsagePercent);
   fillEl.style.width = `${fillWidth}%`;
-
   percentEl.textContent = `${summary.budgetUsagePercent}%`;
 
   // Remove previous status classes
@@ -151,6 +201,12 @@ function renderSafetyCap() {
     navBadge.style.display = state.cart.length > 0 ? 'flex' : 'none';
   }
 
+  // Update Shop Options bottom nav pill in real time (Requirement 5)
+  const navShopTotal = document.getElementById('nav-shop-options-total');
+  if (navShopTotal) {
+    navShopTotal.textContent = formatRupiah(summary.totalSpent);
+  }
+
   // Quick summary in Belanja tab
   const countTag = document.getElementById('summary-items-count');
   const savingsText = document.getElementById('summary-savings-text');
@@ -165,6 +221,9 @@ function renderSafetyCap() {
   if (checkoutTotal) {
     checkoutTotal.textContent = formatRupiah(summary.totalSpent);
   }
+
+  // Update Shop Options Sheet if open
+  renderShopOptionsSheetContent(summary);
 }
 
 /* ==========================================================================
@@ -173,8 +232,6 @@ function renderSafetyCap() {
 function renderCartItems() {
   const container = document.getElementById('cart-items-container');
   if (!container) return;
-
-  const comparativeHistory = DB.getComparativeHistoryItems();
 
   const filteredItems = state.cart.filter(item => {
     if (state.activeFilter === 'ALL') return true;
@@ -198,7 +255,7 @@ function renderCartItems() {
 
     const emptyAddBtn = document.getElementById('btn-empty-add-item');
     if (emptyAddBtn) {
-      emptyAddBtn.addEventListener('click', () => openItemModal());
+      emptyAddBtn.addEventListener('click', () => openDualAddModal());
     }
 
     refreshIcons();
@@ -209,30 +266,38 @@ function renderCartItems() {
 
   filteredItems.forEach((item) => {
     const line = calculateLineTotal(item);
-    // F-04: Compare price vs previous month
-    const comp = comparePriceWithHistory(item.name, item.price, comparativeHistory);
+    
+    // Requirement 7: Accurate Price Trend using exact unit pricing from database receipts
+    const priceChange = calculateExactPriceChange(item.name, item.price, state.history);
 
-    // Comparator badge HTML
     let compBadgeHtml = '';
-    if (comp.status === 'up') {
-      compBadgeHtml = `<span class="comparator-badge badge-danger-up" title="${comp.text}">
-        <i data-lucide="arrow-up-right" style="width: 11px; height: 11px;"></i>
-        <span>↑ +${Math.abs(comp.diffPercent)}%</span>
-      </span>`;
-    } else if (comp.status === 'down') {
-      compBadgeHtml = `<span class="comparator-badge badge-success-down" title="${comp.text}">
-        <i data-lucide="arrow-down-right" style="width: 11px; height: 11px;"></i>
-        <span>↓ -${Math.abs(comp.diffPercent)}%</span>
-      </span>`;
-    } else if (comp.status === 'equal') {
-      compBadgeHtml = `<span class="comparator-badge badge-equal" title="${comp.text}">
-        <span>= Tetap</span>
-      </span>`;
-    } else if (comp.status === 'new') {
-      compBadgeHtml = `<span class="comparator-badge badge-new" title="Item Baru">
-        <i data-lucide="sparkles" style="width: 10px; height: 10px;"></i>
-        <span>Baru</span>
-      </span>`;
+    if (priceChange.status === 'up') {
+      compBadgeHtml = `
+        <span class="comparator-badge badge-price-up" data-action="view-trend" data-item-name="${item.name}" data-item-price="${item.price}" title="${priceChange.tipText} (Ketuk untuk melihat tren)">
+          <i data-lucide="arrow-up-right" style="width: 11px; height: 11px;"></i>
+          <span>${priceChange.shortBadge || `+${priceChange.diffPercent}%`}</span>
+        </span>
+      `;
+    } else if (priceChange.status === 'down') {
+      compBadgeHtml = `
+        <span class="comparator-badge badge-price-down" data-action="view-trend" data-item-name="${item.name}" data-item-price="${item.price}" title="${priceChange.tipText} (Ketuk untuk melihat tren)">
+          <i data-lucide="arrow-down-right" style="width: 11px; height: 11px;"></i>
+          <span>${priceChange.shortBadge || `-${Math.abs(priceChange.diffPercent)}%`}</span>
+        </span>
+      `;
+    } else if (priceChange.status === 'equal') {
+      compBadgeHtml = `
+        <span class="comparator-badge badge-price-equal" data-action="view-trend" data-item-name="${item.name}" data-item-price="${item.price}" title="${priceChange.tipText}">
+          <span>= Tetap</span>
+        </span>
+      `;
+    } else {
+      compBadgeHtml = `
+        <span class="comparator-badge badge-new" data-action="view-trend" data-item-name="${item.name}" data-item-price="${item.price}" title="Item Baru">
+          <i data-lucide="sparkles" style="width: 10px; height: 10px;"></i>
+          <span>Baru</span>
+        </span>
+      `;
     }
 
     // F-03: Discount Chip HTML
@@ -259,6 +324,9 @@ function renderCartItems() {
             <div class="item-title-row">
               <h4 class="item-name">${item.name}</h4>
               <div class="item-card-actions">
+                <button class="btn-item-action" data-action="view-trend" data-item-name="${item.name}" data-item-price="${item.price}" title="Tren Harga">
+                  <i data-lucide="trending-up" style="width: 14px; height: 14px;"></i>
+                </button>
                 <button class="btn-item-action" data-action="edit-item" data-item-id="${item.id}" title="Edit Item">
                   <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
                 </button>
@@ -277,7 +345,7 @@ function renderCartItems() {
 
             <div class="item-price-unit-row">
               ${line.lineSavings > 0 ? `<span class="original-price-strikethrough">${formatRupiah(line.basePrice)}</span>` : ''}
-              <span class="final-unit-price">${formatRupiah(line.finalUnitPrice)}</span>
+              <span class="final-unit-price" data-action="view-trend" data-item-name="${item.name}" data-item-price="${item.price}" style="cursor: pointer;" title="Klik untuk cek riwayat harga">${formatRupiah(line.finalUnitPrice)}</span>
               ${item.note ? `<span style="font-size: 10px; color: var(--text-muted); font-style: italic;">• ${item.note}</span>` : ''}
             </div>
           </div>
@@ -303,6 +371,137 @@ function renderCartItems() {
 
   container.innerHTML = html;
   refreshIcons();
+}
+
+/* ==========================================================================
+   Requirement 2: Render "Most Frequently Bought" Smart Lists Section
+   Auto-populates based on user shopping frequency, allowing 1-tap re-add to cart
+   ========================================================================== */
+function renderMostFrequentlyBought() {
+  const container = document.getElementById('most-bought-carousel-container');
+  if (!container) return;
+
+  const mostBought = getMostFrequentlyBoughtItems(state.history);
+
+  if (mostBought.length === 0) {
+    container.innerHTML = `
+      <div style="font-size: 11px; color: var(--text-muted); padding: 8px 4px;">
+        Belum ada riwayat belanja untuk membentuk rekomendasi frekuensi belanja.
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  // Display top 8 frequently bought items
+  mostBought.slice(0, 8).forEach(item => {
+    const priceChange = calculateExactPriceChange(item.name, item.latestPrice, state.history);
+
+    let priceBadgeClass = 'badge-price-equal';
+    let badgeText = 'Same Price';
+    if (priceChange.status === 'down') {
+      priceBadgeClass = 'badge-price-down';
+      badgeText = priceChange.shortBadge || `↓ -${Math.abs(priceChange.diffPercent)}%`;
+    } else if (priceChange.status === 'up') {
+      priceBadgeClass = 'badge-price-up';
+      badgeText = priceChange.shortBadge || `↑ +${priceChange.diffPercent}%`;
+    }
+
+    html += `
+      <div class="most-bought-card">
+        <div>
+          <div class="mb-top">
+            <span class="category-tag">${item.category}</span>
+            <span class="mb-freq-badge" title="Frekuensi belanja">${item.purchaseCount}x dibeli</span>
+          </div>
+          <h5 class="mb-name" title="${item.name}">${item.name}</h5>
+        </div>
+
+        <div>
+          <div class="mb-price-row">
+            <span class="mb-price">${formatRupiah(item.latestPrice)}<span style="font-size: 10px; color: var(--text-muted); font-weight: normal;">/${item.unit}</span></span>
+            <span class="comparator-badge ${priceBadgeClass}" data-action="view-trend" data-item-name="${item.name}" data-item-price="${item.latestPrice}" title="Riwayat harga unit">
+              ${badgeText}
+            </span>
+          </div>
+
+          <!-- 1-Tap Re-Add Button (Hard Budget Enforced) -->
+          <button type="button" class="btn-readd-cart" data-action="readd-item" data-item-name="${item.name}" data-item-price="${item.latestPrice}" data-item-cat="${item.category}" data-item-unit="${item.unit}">
+            <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
+            <span>+ 1-Tap Re-Add</span>
+          </button>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+  refreshIcons();
+}
+
+/**
+ * Handle 1-Tap Re-Add from Most Frequently Bought items list
+ * Strictly enforces Hard Budget Limit Protection
+ */
+function handleOneTapReAdd(product) {
+  playTap();
+  const price = Number(product.price) || 0;
+  const name = product.name || 'Produk';
+
+  // Requirement 6: Check Hard Budget Constraint
+  const check = checkBudgetLimitEnforcement({
+    currentCart: state.cart,
+    budgetLimit: state.budget,
+    itemPrice: price,
+    qty: 1,
+    itemName: name
+  });
+
+  if (!check.allowed) {
+    showHardBudgetAlertModal(check, {
+      onAdjustBudget: (suggestedLimit) => {
+        saveBudget(suggestedLimit);
+        // Execute pending add
+        executeDirectAddToCart(product);
+      },
+      onRemoveItem: () => openRemoveItemModal()
+    });
+    return;
+  }
+
+  executeDirectAddToCart(product);
+}
+
+function executeDirectAddToCart(product) {
+  // Check if item already exists in active cart; if so, increment quantity
+  const existingIndex = state.cart.findIndex(i => i.name.toLowerCase().trim() === product.name.toLowerCase().trim());
+
+  if (existingIndex !== -1) {
+    state.cart[existingIndex].qty = (state.cart[existingIndex].qty || 1) + 1;
+    state.cart[existingIndex].checked = true;
+    showToast(`Kuantitas "${product.name}" ditambah (+1)`, 'check-circle');
+  } else {
+    const newItem = {
+      id: 'item-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      name: product.name,
+      category: product.category || 'Sembako',
+      unit: product.unit || 'pcs',
+      qty: 1,
+      price: Number(product.price) || 0,
+      discount: { type: 'none' },
+      checked: true,
+      note: 'Ditambahkan via 1-Tap Re-Add'
+    };
+    state.cart.unshift(newItem);
+    showToast(`"${product.name}" masuk ke troli`, 'shopping-bag');
+  }
+
+  playAdd();
+  vibrate([50]);
+  DB.saveCartItems(state.cart);
+  renderCartItems();
+  renderSafetyCap();
+  renderAnggaranScreen();
 }
 
 /* ==========================================================================
@@ -376,7 +575,7 @@ function renderHistoryScreen() {
               <i data-lucide="receipt" style="width: 12px; height: 12px;"></i>
               <span>Lihat Struk</span>
             </button>
-            <button class="btn-copy-history" style="color: #60a5fa; background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.3);" data-action="copy-to-cart" data-session-id="${session.id}">
+            <button class="btn-copy-history" style="color: var(--color-brand); background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.3);" data-action="copy-to-cart" data-session-id="${session.id}">
               <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
               <span>Salin ke Troli</span>
             </button>
@@ -416,7 +615,7 @@ function renderAnggaranScreen() {
 
   const catColors = {
     'Sembako': '#10b981',
-    'Toiletries': '#3b82f6',
+    'Toiletries': '#38bdf8',
     'Dapur & Bumbu': '#f59e0b',
     'Minuman': '#8b5cf6',
     'Frozen & Segar': '#ec4899',
@@ -523,7 +722,7 @@ function updateModalCalculations() {
   } else if (comp.status === 'equal') {
     compBadge.className = 'comparator-badge badge-equal';
     compBadgeText.textContent = '= Tetap';
-    compMainMsg.innerHTML = `<span style="color: #60a5fa;">${comp.text}</span>`;
+    compMainMsg.innerHTML = `<span style="color: var(--color-brand);">${comp.text}</span>`;
     compTip.textContent = comp.tip;
   } else if (comp.status === 'new') {
     compBadge.className = 'comparator-badge badge-new';
@@ -538,6 +737,53 @@ function updateModalCalculations() {
   }
 
   refreshIcons();
+}
+
+/* ==========================================================================
+   Dual-Option "Add Product" Action Button (Requirement 4)
+   ========================================================================== */
+function openDualAddModal() {
+  playTap();
+  const backdrop = document.getElementById('modal-dual-add-backdrop');
+  if (backdrop) {
+    backdrop.classList.add('active');
+    backdrop.setAttribute('aria-hidden', 'false');
+  }
+}
+
+function closeDualAddModal() {
+  const backdrop = document.getElementById('modal-dual-add-backdrop');
+  if (backdrop) {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+  }
+}
+
+/* ==========================================================================
+   Camera Barcode Scanner (Requirement 4)
+   ========================================================================== */
+function openScannerModal() {
+  playTap();
+  const backdrop = document.getElementById('modal-scanner-backdrop');
+  if (backdrop) {
+    backdrop.classList.add('active');
+    backdrop.setAttribute('aria-hidden', 'false');
+    startCameraScanner(handleScannedProduct);
+  }
+}
+
+function closeScannerModal() {
+  const backdrop = document.getElementById('modal-scanner-backdrop');
+  if (backdrop) {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+    stopCameraScanner();
+  }
+}
+
+function handleScannedProduct(product) {
+  closeScannerModal();
+  handleOneTapReAdd(product);
 }
 
 /* ==========================================================================
@@ -575,7 +821,7 @@ function openItemModal(itemId = null) {
     // Load discount
     state.currentDiscountConfig = item.discount ? { ...item.discount } : { type: 'none' };
   } else {
-    titleEl.textContent = 'Tambah Barang ke Troli';
+    titleEl.textContent = 'Tambah Barang ke Troli (Manual)';
     submitLabel.textContent = 'Masukkan ke Troli';
     idField.value = '';
     nameField.value = '';
@@ -630,6 +876,9 @@ function setDiscountType(type) {
   updateModalCalculations();
 }
 
+/**
+ * Handle save item from manual modal (Hard Budget Limit Enforced)
+ */
 function handleSaveItemFromModal() {
   const name = document.getElementById('item-field-name').value.trim();
   const category = document.getElementById('item-field-category').value;
@@ -660,8 +909,41 @@ function handleSaveItemFromModal() {
     discount.nominal = Number(document.getElementById('input-disc-nominal').value) || 0;
   }
 
+  // Calculate final unit price
+  const discResult = calculateItemDiscount(price, discount);
+  const finalPrice = discResult.finalUnitPrice;
+
+  // Requirement 6: Hard Budget Limit Enforcement check
+  let cartWithoutCurrent = state.cart;
   if (state.editingItemId) {
-    // Edit existing item
+    cartWithoutCurrent = state.cart.filter(i => i.id !== state.editingItemId);
+  }
+
+  const check = checkBudgetLimitEnforcement({
+    currentCart: cartWithoutCurrent,
+    budgetLimit: state.budget,
+    itemPrice: finalPrice,
+    qty,
+    itemName: name
+  });
+
+  if (!check.allowed) {
+    showHardBudgetAlertModal(check, {
+      onAdjustBudget: (suggestedLimit) => {
+        saveBudget(suggestedLimit);
+        // Retry saving item
+        applyItemModalSave(name, category, unit, qty, price, discount);
+      },
+      onRemoveItem: () => openRemoveItemModal()
+    });
+    return;
+  }
+
+  applyItemModalSave(name, category, unit, qty, price, discount);
+}
+
+function applyItemModalSave(name, category, unit, qty, price, discount) {
+  if (state.editingItemId) {
     const idx = state.cart.findIndex(i => i.id === state.editingItemId);
     if (idx !== -1) {
       state.cart[idx] = {
@@ -676,7 +958,6 @@ function handleSaveItemFromModal() {
       showToast(`Perubahan "${name}" disimpan`, 'check-circle');
     }
   } else {
-    // Add new item
     const newItem = {
       id: 'item-' + Date.now(),
       name,
@@ -698,6 +979,139 @@ function handleSaveItemFromModal() {
   renderCartItems();
   renderSafetyCap();
   renderAnggaranScreen();
+}
+
+/* ==========================================================================
+   Remove Item Modal (Quick Action in Hard Budget Alert)
+   ========================================================================== */
+function openRemoveItemModal() {
+  playTap();
+  const backdrop = document.getElementById('modal-remove-item-backdrop');
+  const container = document.getElementById('remove-item-cart-list');
+
+  if (!backdrop || !container) return;
+
+  if (state.cart.length === 0) {
+    container.innerHTML = '<p style="font-size:12px;color:var(--text-muted);text-align:center;">Troli kosong.</p>';
+  } else {
+    let html = '';
+    state.cart.forEach(item => {
+      const line = calculateLineTotal(item);
+      html += `
+        <div class="shop-options-item-row">
+          <div>
+            <div style="font-weight: 700; color: var(--text-primary);">${item.name}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${item.qty} ${item.unit || 'pcs'} × ${formatRupiah(line.finalUnitPrice)}</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-weight: 800; color: var(--text-primary);">${formatRupiah(line.lineTotal)}</span>
+            <button type="button" class="btn-item-action delete" data-action="quick-remove-budget" data-item-id="${item.id}" title="Hapus untuk Bebaskan Budget">
+              <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  backdrop.classList.add('active');
+  backdrop.setAttribute('aria-hidden', 'false');
+  refreshIcons();
+}
+
+function closeRemoveItemModal() {
+  const backdrop = document.getElementById('modal-remove-item-backdrop');
+  if (backdrop) {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+  }
+}
+
+/* ==========================================================================
+   Shop Options Sheet Modal (Requirement 5 & 6)
+   ========================================================================== */
+function openShopOptionsModal() {
+  playTap();
+  const backdrop = document.getElementById('modal-shop-options-backdrop');
+  if (!backdrop) return;
+
+  const summary = calculateCartSummary(state.cart, state.budget);
+  renderShopOptionsSheetContent(summary);
+
+  backdrop.classList.add('active');
+  backdrop.setAttribute('aria-hidden', 'false');
+  refreshIcons();
+}
+
+function closeShopOptionsModal() {
+  const backdrop = document.getElementById('modal-shop-options-backdrop');
+  if (backdrop) {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function renderShopOptionsSheetContent(summary) {
+  const remainingValEl = document.getElementById('shop-options-remaining-val');
+  const budgetFillEl = document.getElementById('shop-options-budget-fill');
+  const spentValEl = document.getElementById('shop-options-spent-val');
+  const limitValEl = document.getElementById('shop-options-limit-val');
+  const subtotalEl = document.getElementById('shop-options-subtotal');
+  const savingsEl = document.getElementById('shop-options-savings');
+  const totalCostEl = document.getElementById('shop-options-total-cost');
+  const itemsContainer = document.getElementById('shop-options-cart-items-container');
+  const itemsBadge = document.getElementById('shop-options-items-badge');
+
+  if (!remainingValEl) return;
+
+  const isDeficit = summary.remainingBudget < 0;
+  remainingValEl.textContent = formatRupiah(Math.abs(summary.remainingBudget));
+  remainingValEl.style.color = isDeficit ? '#ef4444' : '#10b981';
+
+  const fillWidth = Math.min(100, summary.budgetUsagePercent);
+  budgetFillEl.style.width = `${fillWidth}%`;
+  budgetFillEl.className = `shop-options-budget-fill fill-${summary.safetyStatus}`;
+
+  spentValEl.textContent = `Terpakai: ${formatRupiah(summary.totalSpent)}`;
+  limitValEl.textContent = `Batas: ${formatRupiah(summary.budget)} (${summary.budgetUsagePercent}%)`;
+
+  subtotalEl.textContent = formatRupiah(summary.totalSubtotal);
+  savingsEl.textContent = `-${formatRupiah(summary.totalSavings)}`;
+  totalCostEl.textContent = formatRupiah(summary.totalSpent);
+
+  if (itemsBadge) {
+    itemsBadge.textContent = `${state.cart.length} barang di troli`;
+  }
+
+  if (itemsContainer) {
+    if (state.cart.length === 0) {
+      itemsContainer.innerHTML = '<p style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0;">Troli belanja masih kosong.</p>';
+    } else {
+      let html = '';
+      state.cart.forEach(item => {
+        const line = calculateLineTotal(item);
+        html += `
+          <div class="shop-options-item-row" data-item-id="${item.id}">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">${formatRupiah(line.finalUnitPrice)} / ${item.unit || 'pcs'}</div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="qty-stepper-control" style="transform: scale(0.85); margin: 0;">
+                <button class="qty-step-btn" data-action="qty-minus" data-item-id="${item.id}">-</button>
+                <span class="qty-display-number">${item.qty || 1}</span>
+                <button class="qty-step-btn" data-action="qty-plus" data-item-id="${item.id}">+</button>
+              </div>
+              <span style="font-weight: 800; color: var(--text-primary); font-size: 12px; min-width: 60px; text-align: right;">${formatRupiah(line.lineTotal)}</span>
+            </div>
+          </div>
+        `;
+      });
+      itemsContainer.innerHTML = html;
+    }
+  }
 }
 
 /* ==========================================================================
@@ -754,13 +1168,13 @@ function openReceiptModal(sessionId) {
     itemsHtml += `
       <div class="receipt-row">
         <div>
-          <div style="font-weight: 700; color: #fff;">${item.name}</div>
+          <div style="font-weight: 700; color: var(--text-primary);">${item.name}</div>
           <div style="font-size: 10px; color: var(--text-muted);">
             ${item.qty} ${item.unit || 'pcs'} × ${formatRupiah(line.finalUnitPrice)}
             ${line.lineSavings > 0 ? `(Diskon ${line.discountLabel})` : ''}
           </div>
         </div>
-        <div style="font-weight: 800; color: #fff;">${formatRupiah(line.lineTotal)}</div>
+        <div style="font-weight: 800; color: var(--text-primary);">${formatRupiah(line.lineTotal)}</div>
       </div>
     `;
   });
@@ -826,10 +1240,13 @@ function handleCheckoutSession() {
 
   // Clear local cart
   state.cart = [];
+  closeShopOptionsModal();
+
   renderCartItems();
   renderSafetyCap();
   renderHistoryScreen();
   renderAnggaranScreen();
+  renderMostFrequentlyBought();
 
   // Switch to Riwayat tab to view saved session
   switchTab('riwayat');
@@ -855,6 +1272,7 @@ function switchTab(tabName) {
 
   if (tabName === 'belanja') {
     renderCartItems();
+    renderMostFrequentlyBought();
   } else if (tabName === 'riwayat') {
     renderHistoryScreen();
   } else if (tabName === 'anggaran') {
@@ -862,6 +1280,145 @@ function switchTab(tabName) {
   }
 
   refreshIcons();
+}
+
+/* ==========================================================================
+   Color Theme System Controls (Requirement 3)
+   ========================================================================== */
+function updateThemeUI(themeInfo) {
+  const currentSetting = getCurrentThemeSetting();
+  const label = document.getElementById('active-theme-label');
+  const iconTheme = document.getElementById('icon-theme');
+
+  if (label) {
+    if (currentSetting === 'system') {
+      label.textContent = 'System Default';
+    } else if (currentSetting === 'light') {
+      label.textContent = 'Light Mode (Baby Blue)';
+    } else {
+      label.textContent = 'Dark Mode (Midnight)';
+    }
+  }
+
+  if (iconTheme) {
+    const resolved = getResolvedTheme();
+    iconTheme.setAttribute('data-lucide', resolved === 'light' ? 'sun' : 'moon');
+    refreshIcons();
+  }
+
+  // Update active state in settings grid
+  document.querySelectorAll('.theme-option-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.themeChoice === currentSetting);
+  });
+}
+
+function handleToggleQuickTheme() {
+  playTap();
+  const current = getCurrentThemeSetting();
+  let next = 'light';
+  if (current === 'light') next = 'dark';
+  else if (current === 'dark') next = 'system';
+  else next = 'light';
+
+  applyTheme(next);
+  updateThemeUI();
+  showToast(`Tema diubah: ${next === 'system' ? 'System Default' : next === 'light' ? 'Light (Baby Blue)' : 'Dark (Midnight)'}`, 'palette');
+}
+
+/* ==========================================================================
+   User Profile & Authentication System UI (Requirement 1)
+   ========================================================================== */
+function updateAuthUI(user) {
+  const avatarEl = document.getElementById('header-avatar-initials');
+  const sheetAvatarEl = document.getElementById('profile-sheet-avatar');
+  const sheetNameEl = document.getElementById('profile-sheet-name');
+  const sheetEmailEl = document.getElementById('profile-sheet-email');
+  const sheetRoleEl = document.getElementById('profile-sheet-role');
+  const sheetProviderBadge = document.getElementById('profile-sheet-provider-badge');
+
+  if (!user) return;
+
+  const initial = user.name ? user.name.charAt(0).toUpperCase() : 'U';
+  if (avatarEl) avatarEl.textContent = initial;
+  if (sheetAvatarEl) sheetAvatarEl.textContent = initial;
+  if (sheetNameEl) sheetNameEl.textContent = user.name || 'Pengguna';
+  if (sheetEmailEl) sheetEmailEl.textContent = user.email || user.phone || 'Tersambung';
+  if (sheetRoleEl) sheetRoleEl.textContent = user.role || 'Member';
+  if (sheetProviderBadge) {
+    sheetProviderBadge.textContent = user.provider ? user.provider.toUpperCase() : 'AUTH';
+  }
+}
+
+function openProfileModal() {
+  playTap();
+  const backdrop = document.getElementById('modal-profile-backdrop');
+  if (backdrop) {
+    updateThemeUI();
+    backdrop.classList.add('active');
+    backdrop.setAttribute('aria-hidden', 'false');
+    refreshIcons();
+  }
+}
+
+function closeProfileModal() {
+  const backdrop = document.getElementById('modal-profile-backdrop');
+  if (backdrop) {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function openAuthModal() {
+  playTap();
+  const backdrop = document.getElementById('modal-auth-backdrop');
+  if (backdrop) {
+    backdrop.classList.add('active');
+    backdrop.setAttribute('aria-hidden', 'false');
+    refreshIcons();
+  }
+}
+
+function closeAuthModal() {
+  const backdrop = document.getElementById('modal-auth-backdrop');
+  if (backdrop) {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+    if (state.phoneTimerInterval) {
+      clearInterval(state.phoneTimerInterval);
+      state.phoneTimerInterval = null;
+    }
+  }
+}
+
+function setAuthMethodTab(method) {
+  document.querySelectorAll('.auth-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.authMethod === method);
+  });
+
+  document.getElementById('auth-pane-google').style.display = method === 'google' ? 'block' : 'none';
+  document.getElementById('auth-pane-email').style.display = method === 'email' ? 'block' : 'none';
+  document.getElementById('auth-pane-phone').style.display = method === 'phone' ? 'block' : 'none';
+}
+
+function startOtpCountdown(seconds = 60) {
+  const secEl = document.getElementById('otp-seconds');
+  const resendBtn = document.getElementById('btn-resend-otp');
+  let remaining = seconds;
+
+  if (resendBtn) resendBtn.disabled = true;
+  if (secEl) secEl.textContent = remaining;
+
+  if (state.phoneTimerInterval) clearInterval(state.phoneTimerInterval);
+
+  state.phoneTimerInterval = setInterval(() => {
+    remaining -= 1;
+    if (secEl) secEl.textContent = remaining;
+    if (remaining <= 0) {
+      clearInterval(state.phoneTimerInterval);
+      state.phoneTimerInterval = null;
+      if (resendBtn) resendBtn.disabled = false;
+    }
+  }, 1000);
 }
 
 /* ==========================================================================
@@ -916,8 +1473,360 @@ function setupEventListeners() {
   document.getElementById('nav-tab-riwayat').addEventListener('click', () => switchTab('riwayat'));
   document.getElementById('nav-tab-anggaran').addEventListener('click', () => switchTab('anggaran'));
 
-  // Center Floating Add Button
-  document.getElementById('btn-floating-add-item').addEventListener('click', () => openItemModal());
+  // Requirement 4: Center Floating Add Button opens Dual-Option Choice Modal
+  document.getElementById('btn-floating-add-item').addEventListener('click', () => openDualAddModal());
+
+  // Requirement 5: Pinned "Shop Options" button
+  document.getElementById('btn-nav-shop-options').addEventListener('click', () => openShopOptionsModal());
+
+  // Dual-Option modal listeners
+  document.getElementById('btn-choice-manual').addEventListener('click', () => {
+    closeDualAddModal();
+    openItemModal();
+  });
+  document.getElementById('btn-choice-scanner').addEventListener('click', () => {
+    closeDualAddModal();
+    openScannerModal();
+  });
+  document.getElementById('btn-close-dual-add-modal').addEventListener('click', closeDualAddModal);
+  document.getElementById('modal-dual-add-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-dual-add-backdrop') closeDualAddModal();
+  });
+
+  // Scanner modal listeners
+  document.getElementById('btn-close-scanner-modal').addEventListener('click', closeScannerModal);
+  document.getElementById('modal-scanner-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-scanner-backdrop') closeScannerModal();
+  });
+  document.getElementById('btn-toggle-torch').addEventListener('click', async () => {
+    const isOn = await toggleTorch();
+    document.getElementById('torch-label').textContent = isOn ? 'Senter (Aktif)' : 'Senter';
+    showToast(isOn ? 'Senter kamera menyala' : 'Senter mati', 'zap');
+  });
+
+  // Barcode test chips (Simulator)
+  document.querySelectorAll('.barcode-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const barcode = chip.dataset.barcode;
+      handleDetectedBarcode(barcode, handleScannedProduct);
+    });
+  });
+
+  // Hard Budget Limit Warning Modal Listeners (Requirement 6)
+  document.getElementById('btn-close-hard-budget-modal').addEventListener('click', closeHardBudgetAlertModal);
+  document.getElementById('btn-hard-budget-cancel').addEventListener('click', closeHardBudgetAlertModal);
+  document.getElementById('modal-hard-budget-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-hard-budget-backdrop') closeHardBudgetAlertModal();
+  });
+
+  document.getElementById('btn-hard-budget-adjust').addEventListener('click', () => {
+    const btn = document.getElementById('btn-hard-budget-suggest-limit');
+    const suggested = Number(btn.dataset.suggestedLimit) || (state.budget + 50000);
+    const pending = getPendingBlockedAction();
+    closeHardBudgetAlertModal();
+    if (pending && typeof pending.onAdjustBudget === 'function') {
+      pending.onAdjustBudget(suggested);
+    } else {
+      saveBudget(suggested);
+    }
+  });
+
+  document.getElementById('btn-hard-budget-remove-item').addEventListener('click', () => {
+    closeHardBudgetAlertModal();
+    openRemoveItemModal();
+  });
+
+  // Remove Item Modal Listeners
+  document.getElementById('btn-close-remove-item-modal').addEventListener('click', closeRemoveItemModal);
+  document.getElementById('modal-remove-item-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-remove-item-backdrop') closeRemoveItemModal();
+  });
+
+  const removeItemContainer = document.getElementById('remove-item-cart-list');
+  if (removeItemContainer) {
+    removeItemContainer.addEventListener('click', (e) => {
+      const delBtn = e.target.closest('[data-action="quick-remove-budget"]');
+      if (delBtn) {
+        playTap();
+        const id = delBtn.dataset.itemId;
+        const item = state.cart.find(i => i.id === id);
+        if (item) {
+          state.cart = state.cart.filter(i => i.id !== id);
+          DB.saveCartItems(state.cart);
+          renderCartItems();
+          renderSafetyCap();
+          renderAnggaranScreen();
+          closeRemoveItemModal();
+          showToast(`"${item.name}" dikeluarkan dari troli untuk membebaskan budget.`, 'check');
+        }
+      }
+    });
+  }
+
+  // Shop Options Sheet Listeners (Requirement 5)
+  document.getElementById('btn-close-shop-options-modal').addEventListener('click', closeShopOptionsModal);
+  document.getElementById('modal-shop-options-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-shop-options-backdrop') closeShopOptionsModal();
+  });
+  document.getElementById('btn-shop-options-checkout').addEventListener('click', () => {
+    closeShopOptionsModal();
+    handleCheckoutSession();
+  });
+
+  // Price Trend Popover Listeners (Requirement 7)
+  document.getElementById('btn-close-price-trend-modal').addEventListener('click', closePriceTrendModal);
+  document.getElementById('modal-price-trend-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-price-trend-backdrop') closePriceTrendModal();
+  });
+
+  // Most Frequently Bought Toggle
+  const toggleMbBtn = document.getElementById('btn-toggle-most-bought');
+  if (toggleMbBtn) {
+    toggleMbBtn.addEventListener('click', () => {
+      playTap();
+      state.isMostBoughtCollapsed = !state.isMostBoughtCollapsed;
+      const carousel = document.getElementById('most-bought-carousel-container');
+      const icon = document.getElementById('icon-toggle-most-bought');
+      if (carousel) carousel.style.display = state.isMostBoughtCollapsed ? 'none' : 'flex';
+      if (icon) icon.setAttribute('data-lucide', state.isMostBoughtCollapsed ? 'chevron-down' : 'chevron-up');
+      refreshIcons();
+    });
+  }
+
+  // Most Frequently Bought delegation (1-Tap Re-Add & View Trend)
+  const mbContainer = document.getElementById('most-bought-carousel-container');
+  if (mbContainer) {
+    mbContainer.addEventListener('click', (e) => {
+      const readdBtn = e.target.closest('[data-action="readd-item"]');
+      if (readdBtn) {
+        const product = {
+          name: readdBtn.dataset.itemName,
+          price: Number(readdBtn.dataset.itemPrice) || 0,
+          category: readdBtn.dataset.itemCat || 'Sembako',
+          unit: readdBtn.dataset.itemUnit || 'pcs'
+        };
+        handleOneTapReAdd(product);
+        return;
+      }
+
+      const trendTrigger = e.target.closest('[data-action="view-trend"]');
+      if (trendTrigger) {
+        const name = trendTrigger.dataset.itemName;
+        const price = Number(trendTrigger.dataset.itemPrice) || 0;
+        openPriceTrendModal(name, price, state.history);
+        return;
+      }
+    });
+  }
+
+  // Theme Switcher Quick Header Button & Settings
+  const themeBtn = document.getElementById('btn-toggle-theme');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', handleToggleQuickTheme);
+  }
+
+  document.querySelectorAll('[data-theme-choice]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playTap();
+      const choice = btn.dataset.themeChoice;
+      applyTheme(choice);
+      updateThemeUI();
+      showToast(`Tema diterapkan: ${choice === 'system' ? 'System Default' : choice === 'light' ? 'Light (Baby Blue)' : 'Dark (Midnight)'}`, 'palette');
+    });
+  });
+
+  // User Profile & Authentication Listeners (Requirement 1)
+  document.getElementById('btn-open-profile-modal').addEventListener('click', openProfileModal);
+  document.getElementById('btn-close-profile-modal').addEventListener('click', closeProfileModal);
+  document.getElementById('modal-profile-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-profile-backdrop') closeProfileModal();
+  });
+
+  document.getElementById('btn-force-cloud-sync').addEventListener('click', () => {
+    playTap();
+    DB.triggerCloudSync();
+    showToast('Data disinkronkan ke Cloud Firestore!', 'cloud');
+  });
+
+  document.getElementById('btn-trigger-switch-account').addEventListener('click', () => {
+    closeProfileModal();
+    openAuthModal();
+  });
+
+  document.getElementById('btn-trigger-signout').addEventListener('click', () => {
+    playTap();
+    signOutUser();
+    closeProfileModal();
+    showToast('Berhasil keluar akun. Menggunakan profil Tamu.', 'log-out');
+  });
+
+  // Auth Modal Listeners
+  document.getElementById('btn-close-auth-modal').addEventListener('click', closeAuthModal);
+  document.getElementById('modal-auth-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-auth-backdrop') closeAuthModal();
+  });
+
+  document.querySelectorAll('.auth-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playTap();
+      setAuthMethodTab(btn.dataset.authMethod);
+    });
+  });
+
+  // Google OAuth SSO Button
+  document.getElementById('btn-google-oauth-login').addEventListener('click', async () => {
+    playTap();
+    try {
+      const user = await signInWithGoogle();
+      closeAuthModal();
+      DB.triggerCloudSync();
+      showToast(`Selamat datang, ${user.name}!`, 'check-circle');
+    } catch (err) {
+      showToast(err.message, 'alert-circle');
+    }
+  });
+
+  // Email Sign In / Sign Up toggles
+  const btnEmailLogin = document.getElementById('btn-email-mode-login');
+  const btnEmailSignup = document.getElementById('btn-email-mode-signup');
+  const groupSignupName = document.getElementById('group-signup-name');
+  const emailSubmitLabel = document.getElementById('btn-email-submit-label');
+
+  btnEmailLogin.addEventListener('click', () => {
+    playTap();
+    state.emailAuthMode = 'login';
+    btnEmailLogin.classList.add('active');
+    btnEmailSignup.classList.remove('active');
+    groupSignupName.style.display = 'none';
+    emailSubmitLabel.textContent = 'Masuk Sekarang';
+  });
+
+  btnEmailSignup.addEventListener('click', () => {
+    playTap();
+    state.emailAuthMode = 'signup';
+    btnEmailSignup.classList.add('active');
+    btnEmailLogin.classList.remove('active');
+    groupSignupName.style.display = 'block';
+    emailSubmitLabel.textContent = 'Daftar Akun Baru';
+  });
+
+  // Email Submit
+  document.getElementById('btn-submit-email-auth').addEventListener('click', async () => {
+    playTap();
+    const email = document.getElementById('auth-email-input').value;
+    const pwd = document.getElementById('auth-password-input').value;
+    const name = document.getElementById('auth-email-name').value;
+    const errorEl = document.getElementById('auth-email-error-msg');
+    errorEl.style.display = 'none';
+
+    try {
+      let user;
+      if (state.emailAuthMode === 'signup') {
+        user = await signUpWithEmail(name, email, pwd);
+      } else {
+        user = await signInWithEmail(email, pwd);
+      }
+      closeAuthModal();
+      DB.triggerCloudSync();
+      showToast(`Berhasil masuk sebagai ${user.name}!`, 'check-circle');
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = 'block';
+      vibrate([50]);
+    }
+  });
+
+  // Forgot Password Dialog
+  document.getElementById('btn-forgot-password-link').addEventListener('click', () => {
+    playTap();
+    document.getElementById('modal-forgot-password-backdrop').classList.add('active');
+  });
+
+  document.getElementById('btn-close-forgot-pwd-modal').addEventListener('click', () => {
+    document.getElementById('modal-forgot-password-backdrop').classList.remove('active');
+  });
+
+  document.getElementById('btn-submit-forgot-pwd').addEventListener('click', async () => {
+    playTap();
+    const email = document.getElementById('input-forgot-email').value;
+    try {
+      const res = await requestPasswordReset(email);
+      document.getElementById('modal-forgot-password-backdrop').classList.remove('active');
+      showToast(res.message, 'mail');
+    } catch (err) {
+      showToast(err.message, 'alert-circle');
+    }
+  });
+
+  // Phone Number SMS OTP Handlers
+  document.getElementById('btn-send-phone-otp').addEventListener('click', async () => {
+    playTap();
+    const phoneInput = document.getElementById('auth-phone-input').value;
+    const fullPhone = '+62' + phoneInput.replace(/[^0-9]/g, '');
+
+    try {
+      const res = await sendPhoneOTP(fullPhone);
+      state.pendingPhoneTarget = res.phone;
+      document.getElementById('otp-target-phone').textContent = res.phone;
+      document.getElementById('phone-step-input').style.display = 'none';
+      document.getElementById('phone-step-verify').style.display = 'block';
+      startOtpCountdown(60);
+
+      // Focus first otp box
+      const firstOtp = document.querySelector('.otp-box');
+      if (firstOtp) firstOtp.focus();
+
+      showToast(`SMS OTP dikirim! (Simulasi Kode: ${res.demoCode})`, 'message-square');
+    } catch (err) {
+      showToast(err.message, 'alert-circle');
+    }
+  });
+
+  document.getElementById('btn-resend-otp').addEventListener('click', async () => {
+    playTap();
+    try {
+      const res = await sendPhoneOTP(state.pendingPhoneTarget);
+      startOtpCountdown(60);
+      showToast(`Kode baru dikirim! (Simulasi: ${res.demoCode})`, 'message-square');
+    } catch (err) {
+      showToast(err.message, 'alert-circle');
+    }
+  });
+
+  // Auto-advance OTP inputs
+  const otpBoxes = document.querySelectorAll('.otp-box');
+  otpBoxes.forEach((box, idx) => {
+    box.addEventListener('input', (e) => {
+      if (box.value.length === 1 && idx < otpBoxes.length - 1) {
+        otpBoxes[idx + 1].focus();
+      }
+    });
+
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !box.value && idx > 0) {
+        otpBoxes[idx - 1].focus();
+      }
+    });
+  });
+
+  document.getElementById('btn-verify-phone-otp').addEventListener('click', async () => {
+    playTap();
+    let code = '';
+    otpBoxes.forEach(b => code += b.value);
+    const errorEl = document.getElementById('auth-phone-error-msg');
+    errorEl.style.display = 'none';
+
+    try {
+      const user = await verifyPhoneOTP(state.pendingPhoneTarget, code);
+      closeAuthModal();
+      DB.triggerCloudSync();
+      showToast(`Nomor HP terverifikasi! Selamat datang, ${user.name}.`, 'check-circle');
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = 'block';
+      vibrate([50]);
+    }
+  });
 
   // Sound toggle button
   const soundBtn = document.getElementById('btn-toggle-sound');
@@ -1055,9 +1964,18 @@ function setupEventListeners() {
     });
   });
 
-  // Cart item delegator (Check, Qty +/- stepper, Edit, Delete)
-  const cartContainer = document.getElementById('cart-items-container');
-  cartContainer.addEventListener('click', (e) => {
+  // Cart item & Shop options delegation (Check, Qty +/- stepper, Trend Popover, Edit, Delete)
+  const handleItemDelegation = (e) => {
+    // 1. View Historical Price Trend
+    const trendTrigger = e.target.closest('[data-action="view-trend"]');
+    if (trendTrigger) {
+      const name = trendTrigger.dataset.itemName;
+      const price = Number(trendTrigger.dataset.itemPrice) || 0;
+      openPriceTrendModal(name, price, state.history);
+      return;
+    }
+
+    // 2. Toggle check in cart
     const checkBtn = e.target.closest('[data-action="toggle-check"]');
     if (checkBtn) {
       playTap();
@@ -1072,6 +1990,7 @@ function setupEventListeners() {
       return;
     }
 
+    // 3. Qty Minus stepper
     const minusBtn = e.target.closest('[data-action="qty-minus"]');
     if (minusBtn) {
       playTap();
@@ -1081,7 +2000,7 @@ function setupEventListeners() {
         if (item.qty > 1) {
           item.qty -= 1;
         } else {
-          // If 1, ask to remove
+          // If 1, remove item
           state.cart = state.cart.filter(i => i.id !== id);
           showToast(`"${item.name}" dihapus dari troli`, 'trash');
         }
@@ -1093,12 +2012,40 @@ function setupEventListeners() {
       return;
     }
 
+    // 4. Qty Plus stepper (Hard Budget Limit Enforced)
     const plusBtn = e.target.closest('[data-action="qty-plus"]');
     if (plusBtn) {
       playTap();
       const id = plusBtn.dataset.itemId;
       const item = state.cart.find(i => i.id === id);
       if (item) {
+        const line = calculateLineTotal(item);
+        const incrementalCost = line.finalUnitPrice;
+
+        // Check Hard Budget constraint
+        const check = checkBudgetLimitEnforcement({
+          currentCart: state.cart,
+          budgetLimit: state.budget,
+          itemPrice: incrementalCost,
+          qty: 1,
+          itemName: item.name
+        });
+
+        if (!check.allowed) {
+          showHardBudgetAlertModal(check, {
+            onAdjustBudget: (suggestedLimit) => {
+              saveBudget(suggestedLimit);
+              item.qty = (item.qty || 1) + 1;
+              DB.saveCartItems(state.cart);
+              renderCartItems();
+              renderSafetyCap();
+              renderAnggaranScreen();
+            },
+            onRemoveItem: () => openRemoveItemModal()
+          });
+          return;
+        }
+
         item.qty = (item.qty || 1) + 1;
         DB.saveCartItems(state.cart);
         renderCartItems();
@@ -1108,6 +2055,7 @@ function setupEventListeners() {
       return;
     }
 
+    // 5. Edit item
     const editBtn = e.target.closest('[data-action="edit-item"]');
     if (editBtn) {
       const id = editBtn.dataset.itemId;
@@ -1115,6 +2063,7 @@ function setupEventListeners() {
       return;
     }
 
+    // 6. Delete item
     const delBtn = e.target.closest('[data-action="delete-item"]');
     if (delBtn) {
       playTap();
@@ -1130,7 +2079,13 @@ function setupEventListeners() {
       }
       return;
     }
-  });
+  };
+
+  const cartContainer = document.getElementById('cart-items-container');
+  if (cartContainer) cartContainer.addEventListener('click', handleItemDelegation);
+
+  const shopOptionsCart = document.getElementById('shop-options-cart-items-container');
+  if (shopOptionsCart) shopOptionsCart.addEventListener('click', handleItemDelegation);
 
   // Checkout Session Button (F-06)
   document.getElementById('btn-checkout-session').addEventListener('click', handleCheckoutSession);
@@ -1160,6 +2115,7 @@ function setupEventListeners() {
     renderSafetyCap();
     renderHistoryScreen();
     renderAnggaranScreen();
+    renderMostFrequentlyBought();
     showToast('Simulasi data Rian (Juli, Ags, Des) berhasil dimuat!', 'refresh-cw');
   };
 
@@ -1252,6 +2208,7 @@ function setupEventListeners() {
           renderSafetyCap();
           renderHistoryScreen();
           renderAnggaranScreen();
+          renderMostFrequentlyBought();
           showToast('Data berhasil dipulihkan!', 'check-circle');
         } catch (err) {
           showToast('Gagal memulihkan file cadangan!', 'alert-circle');
@@ -1260,39 +2217,6 @@ function setupEventListeners() {
       reader.readAsText(file);
       e.target.value = '';
     });
-  }
-
-  // Cloud sync status pill click
-  const cloudPill = document.getElementById('header-cloud-pill');
-  if (cloudPill) {
-    cloudPill.addEventListener('click', () => {
-      playTap();
-      const status = getFirebaseStatus();
-      showToast(status.message, 'cloud');
-    });
-  }
-
-  // Manual cloud sync button in Anggaran tab
-  const btnSyncManual = document.getElementById('btn-sync-cloud-manual');
-  if (btnSyncManual) {
-    btnSyncManual.addEventListener('click', () => {
-      playTap();
-      DB.triggerCloudSync();
-      const status = getFirebaseStatus();
-      showToast(`Data disinkronkan ke ${status.label}!`, 'cloud');
-    });
-  }
-}
-
-function renderCloudStatus() {
-  const status = getFirebaseStatus();
-  const pill = document.getElementById('header-cloud-pill');
-  const label = document.getElementById('cloud-pill-label');
-
-  if (pill && label) {
-    pill.className = `cloud-sync-pill ${status.connected ? 'online' : 'offline'}`;
-    label.textContent = status.label;
-    pill.title = status.message;
   }
 }
 
@@ -1303,19 +2227,30 @@ function initApp() {
   updateClock();
   setInterval(updateClock, 30000);
 
+  // Initialize Color Theme (Requirement 3: Dark Blue & Baby Blue)
+  initTheme((themeInfo) => {
+    updateThemeUI(themeInfo);
+  });
+
   // Load from DB
   state.cart = DB.getCartItems();
   state.budget = DB.getBudgetLimit();
   state.history = DB.getHistorySessions();
 
   setupEventListeners();
+
+  // Listen to Auth State (Requirement 1)
+  onAuthStateChanged((user) => {
+    updateAuthUI(user);
+  });
+
   renderSafetyCap();
   renderCartItems();
+  renderMostFrequentlyBought();
   renderAnggaranScreen();
-  renderCloudStatus();
   registerPWA();
 
-  // Initialize Cloud Sync with Firestore doc users/venetta
+  // Initialize Cloud Sync with Firestore
   DB.initCloudSync((remoteData) => {
     if (remoteData) {
       if (Array.isArray(remoteData.cart)) state.cart = remoteData.cart;
@@ -1323,9 +2258,9 @@ function initApp() {
       if (Array.isArray(remoteData.history)) state.history = remoteData.history;
       renderSafetyCap();
       renderCartItems();
+      renderMostFrequentlyBought();
       renderAnggaranScreen();
       renderHistoryScreen();
-      renderCloudStatus();
       showToast('Data tersinkronisasi ke cloud!', 'cloud');
     }
   });

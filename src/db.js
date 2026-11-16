@@ -1,22 +1,23 @@
 /**
- * Database & Storage Module (F-06)
+ * Database & Storage Module (F-06 + Cloud Sync & Account Persistence)
  * Handles LocalStorage persistence, past month shopping sessions, initial seed data,
- * and Cloud Firestore synchronization with document 'users/venetta'.
+ * and Cloud Firestore synchronization with document 'users/{userId}'.
  */
 
 import {
   syncUserDataToFirestore,
   fetchUserDataFromFirestore,
-  listenToUserData,
-  USER_PROFILE,
-  USER_DOC_ID
+  listenToUserData
 } from './firebase.js';
+import { getCurrentUser } from './auth.js';
+import { getMostFrequentlyBoughtItems } from './priceAnalytics.js';
 
 const KEYS = {
   CART: 'smart_grocery_cart_items_v3',
   BUDGET: 'smart_grocery_budget_limit_v3',
   HISTORY: 'smart_grocery_history_sessions_v3',
-  SETTINGS: 'smart_grocery_user_settings_v3'
+  SETTINGS: 'smart_grocery_user_settings_v3',
+  FAVORITES: 'smart_grocery_favorites_v3'
 };
 
 // Baseline reference data from previous month (Desember 2026) for out-of-town students (Rian)
@@ -212,11 +213,12 @@ const DEFAULT_INITIAL_CART = [
 
 export const DB = {
   getUserProfile() {
-    return USER_PROFILE;
+    return getCurrentUser();
   },
 
   getUserDocId() {
-    return USER_DOC_ID;
+    const user = getCurrentUser();
+    return user ? user.id : 'venetta';
   },
 
   // Get active cart items
@@ -235,7 +237,6 @@ export const DB = {
 
   saveCartItems(items) {
     localStorage.setItem(KEYS.CART, JSON.stringify(items));
-    // Trigger background sync to Firestore users/venetta
     this.triggerCloudSync();
   },
 
@@ -253,7 +254,6 @@ export const DB = {
   saveBudgetLimit(amount) {
     const valid = Math.max(0, Number(amount) || 0);
     localStorage.setItem(KEYS.BUDGET, valid.toString());
-    // Trigger background sync to Firestore users/venetta
     this.triggerCloudSync();
     return valid;
   },
@@ -274,7 +274,38 @@ export const DB = {
 
   saveHistorySessions(sessions) {
     localStorage.setItem(KEYS.HISTORY, JSON.stringify(sessions));
-    // Trigger background sync to Firestore users/venetta
+    this.triggerCloudSync();
+  },
+
+  // Get custom preferences
+  getPreferences() {
+    const raw = localStorage.getItem(KEYS.SETTINGS);
+    if (!raw) return { sound: true, vibration: true };
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      return { sound: true, vibration: true };
+    }
+  },
+
+  savePreferences(prefs) {
+    localStorage.setItem(KEYS.SETTINGS, JSON.stringify(prefs));
+    this.triggerCloudSync();
+  },
+
+  // Get favorite / pinned items
+  getFavorites() {
+    const raw = localStorage.getItem(KEYS.FAVORITES);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      return [];
+    }
+  },
+
+  saveFavorites(favs) {
+    localStorage.setItem(KEYS.FAVORITES, JSON.stringify(favs));
     this.triggerCloudSync();
   },
 
@@ -342,21 +373,45 @@ export const DB = {
   },
 
   /**
-   * Background cloud synchronization to doc users/venetta
+   * Get Most Frequently Bought items
    */
-  triggerCloudSync() {
-    const cart = this.getCartItems();
-    const budgetLimit = this.getBudgetLimit();
+  getMostBoughtItems() {
     const history = this.getHistorySessions();
-
-    syncUserDataToFirestore({ cart, budgetLimit, history });
+    return getMostFrequentlyBoughtItems(history);
   },
 
   /**
-   * Load remote data from Firestore doc users/venetta if available
+   * Background cloud synchronization to doc users/{userId}
+   */
+  triggerCloudSync() {
+    const user = getCurrentUser();
+    const userId = user ? user.id : 'venetta';
+
+    const cart = this.getCartItems();
+    const budgetLimit = this.getBudgetLimit();
+    const history = this.getHistorySessions();
+    const preferences = this.getPreferences();
+    const favorites = this.getFavorites();
+
+    syncUserDataToFirestore({
+      userId,
+      profile: user,
+      cart,
+      budgetLimit,
+      history,
+      preferences,
+      favorites
+    });
+  },
+
+  /**
+   * Load remote data from Firestore doc users/{userId} if available
    */
   async initCloudSync(onSyncComplete) {
-    const remoteData = await fetchUserDataFromFirestore();
+    const user = getCurrentUser();
+    const userId = user ? user.id : 'venetta';
+
+    const remoteData = await fetchUserDataFromFirestore(userId);
     if (remoteData) {
       if (Array.isArray(remoteData.cart)) {
         localStorage.setItem(KEYS.CART, JSON.stringify(remoteData.cart));
@@ -367,13 +422,19 @@ export const DB = {
       if (Array.isArray(remoteData.history)) {
         localStorage.setItem(KEYS.HISTORY, JSON.stringify(remoteData.history));
       }
+      if (remoteData.preferences) {
+        localStorage.setItem(KEYS.SETTINGS, JSON.stringify(remoteData.preferences));
+      }
+      if (Array.isArray(remoteData.favorites)) {
+        localStorage.setItem(KEYS.FAVORITES, JSON.stringify(remoteData.favorites));
+      }
       if (typeof onSyncComplete === 'function') {
         onSyncComplete(remoteData);
       }
     }
 
     // Subscribe to live changes
-    listenToUserData((liveData) => {
+    listenToUserData(userId, (liveData) => {
       if (liveData && typeof onSyncComplete === 'function') {
         onSyncComplete(liveData);
       }

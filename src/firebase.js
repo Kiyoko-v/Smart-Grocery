@@ -1,7 +1,6 @@
 /**
  * Firebase Integration Module for Smart Grocery & Budget Safety Tracker
- * Target Document: users/venetta
- * User Profile: Venetta (venetta@mutiarabangsa.sch.id)
+ * Supports Multi-User authentication & cloud sync under 'users/{userId}'
  */
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
@@ -23,21 +22,13 @@ let app = null;
 let firestoreDb = null;
 let isInitialized = false;
 
-export const USER_DOC_ID = "venetta";
-export const USER_PROFILE = {
-  name: "Venetta",
-  email: "venetta@mutiarabangsa.sch.id",
-  role: "Siswa Rantau",
-  appName: "Smart Grocery & Budget Safety Tracker"
-};
-
 // Inisialisasi Firebase jika bukan placeholder
 if (!isConfigPlaceholder) {
   try {
     app = initializeApp(firebaseConfig);
     firestoreDb = getFirestore(app);
     isInitialized = true;
-    console.log("Firebase initialized successfully for user:", USER_DOC_ID);
+    console.log("Firebase initialized successfully");
   } catch (err) {
     console.warn("Notice inisialisasi Firebase:", err);
   }
@@ -68,22 +59,25 @@ export function getFirebaseStatus() {
 }
 
 /**
- * Simpan data lengkap ke dokumen 'users/venetta' di Cloud Firestore
+ * Simpan data lengkap ke dokumen 'users/{userId}' di Cloud Firestore
  */
-export async function syncUserDataToFirestore({ cart, budgetLimit, history }) {
+export async function syncUserDataToFirestore({ userId = 'venetta', profile, cart, budgetLimit, history, preferences, favorites }) {
   if (!firestoreDb || isConfigPlaceholder) return false;
 
   try {
-    const userDocRef = doc(firestoreDb, "users", USER_DOC_ID);
+    const docId = String(userId || 'venetta').replace(/[/]/g, '_');
+    const userDocRef = doc(firestoreDb, "users", docId);
     await setDoc(userDocRef, {
-      profile: USER_PROFILE,
+      profile: profile || null,
       budgetLimit: Number(budgetLimit) || 750000,
       cart: cart || [],
       history: history || [],
+      preferences: preferences || {},
+      favorites: favorites || [],
       updatedAt: new Date().toISOString()
     }, { merge: true });
     
-    console.log(`[Firebase] Data berhasil disinkronkan ke users/${USER_DOC_ID}`);
+    console.log(`[Firebase] Data berhasil disinkronkan ke users/${docId}`);
     return true;
   } catch (err) {
     console.warn("[Firebase] Gagal sinkron ke Firestore (tetap aman di LocalStorage):", err);
@@ -92,13 +86,14 @@ export async function syncUserDataToFirestore({ cart, budgetLimit, history }) {
 }
 
 /**
- * Muat data dari dokumen 'users/venetta' di Cloud Firestore
+ * Muat data dari dokumen 'users/{userId}' di Cloud Firestore
  */
-export async function fetchUserDataFromFirestore() {
+export async function fetchUserDataFromFirestore(userId = 'venetta') {
   if (!firestoreDb || isConfigPlaceholder) return null;
 
   try {
-    const userDocRef = doc(firestoreDb, "users", USER_DOC_ID);
+    const docId = String(userId || 'venetta').replace(/[/]/g, '_');
+    const userDocRef = doc(firestoreDb, "users", docId);
     const snap = await getDoc(userDocRef);
     if (snap.exists()) {
       return snap.data();
@@ -110,13 +105,14 @@ export async function fetchUserDataFromFirestore() {
 }
 
 /**
- * Berlangganan (Realtime Listen) ke dokumen 'users/venetta'
+ * Berlangganan (Realtime Listen) ke dokumen 'users/{userId}'
  */
-export function listenToUserData(onDataChange) {
+export function listenToUserData(userId = 'venetta', onDataChange) {
   if (!firestoreDb || isConfigPlaceholder) return () => {};
 
   try {
-    const userDocRef = doc(firestoreDb, "users", USER_DOC_ID);
+    const docId = String(userId || 'venetta').replace(/[/]/g, '_');
+    const userDocRef = doc(firestoreDb, "users", docId);
     return onSnapshot(userDocRef, (docSnap) => {
       if (docSnap.exists() && typeof onDataChange === 'function') {
         onDataChange(docSnap.data());
