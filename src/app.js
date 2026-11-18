@@ -340,6 +340,30 @@ function renderSafetyCap() {
     compressedFill.className = `compressed-progress-fill fill-${summary.safetyStatus}`;
   }
 
+  // Header compressed info: Total Keranjang & Sisa Anggaran
+  const compressedSpent = document.getElementById('compressed-spent-text');
+  const compressedRemaining = document.getElementById('compressed-remaining-text');
+  if (compressedSpent) {
+    compressedSpent.textContent = `Total: ${formatRupiah(summary.totalSpent)}`;
+  }
+  if (compressedRemaining) {
+    const sisaVal = summary.remainingBudget >= 0 
+      ? `Sisa: ${formatRupiah(summary.remainingBudget)}` 
+      : `Minus: ${formatRupiah(Math.abs(summary.remainingBudget))}`;
+    compressedRemaining.textContent = sisaVal;
+    compressedRemaining.className = `cpi-remaining cpi-${summary.safetyStatus}`;
+  }
+
+  // Shopee-style sticky bottom checkout bar
+  const scbTotal = document.getElementById('shopee-checkout-total');
+  const scbSub = document.getElementById('shopee-checkout-sub');
+  const scbSavings = document.getElementById('shopee-checkout-savings');
+  const scbBtn = document.getElementById('shopee-checkout-btn-label');
+  if (scbTotal) scbTotal.textContent = formatRupiah(summary.totalSpent);
+  if (scbSub) scbSub.textContent = `Sisa Dompet: ${formatRupiah(summary.remainingBudget)}`;
+  if (scbSavings) scbSavings.textContent = `Hemat ${formatRupiah(summary.totalSavings)}`;
+  if (scbBtn) scbBtn.textContent = `Checkout (${summary.totalLines})`;
+
   // Quick summary in Belanja & Keranjang tab
   const countTag = document.getElementById('summary-items-count');
   const savingsText = document.getElementById('summary-savings-text');
@@ -552,8 +576,29 @@ function renderMostFrequentlyBought() {
       badgeText = priceChange.shortBadge || `↑ +${priceChange.diffPercent}%`;
     }
 
+    const inCart = state.cart.find(c => c.name.toLowerCase() === item.name.toLowerCase());
+    const qty = inCart ? (inCart.qty || 1) : 0;
+
+    let actionBtnHtml = '';
+    if (inCart && qty > 0) {
+      actionBtnHtml = `
+        <div class="catalog-qty-stepper mb-stepper">
+          <button type="button" class="catalog-qty-btn" data-action="cat-qty-minus" data-catalog-name="${escapeHtml(item.name)}" aria-label="Kurangi kuantitas">-</button>
+          <span class="catalog-qty-num">${qty} di troli</span>
+          <button type="button" class="catalog-qty-btn" data-action="cat-qty-plus" data-catalog-name="${escapeHtml(item.name)}" aria-label="Tambah kuantitas">+</button>
+        </div>
+      `;
+    } else {
+      actionBtnHtml = `
+        <button type="button" class="btn-readd-cart" data-action="readd-item" data-item-name="${item.name}" data-item-price="${item.latestPrice}" data-item-cat="${item.category}" data-item-unit="${item.unit}">
+          <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
+          <span>+ 1-Tap Re-Add</span>
+        </button>
+      `;
+    }
+
     html += `
-      <div class="most-bought-card">
+      <div class="most-bought-card ${inCart ? 'in-cart' : ''}">
         <div>
           <div class="mb-top">
             <span class="category-tag">${item.category}</span>
@@ -570,11 +615,7 @@ function renderMostFrequentlyBought() {
             </span>
           </div>
 
-          <!-- 1-Tap Re-Add Button (Hard Budget Enforced) -->
-          <button type="button" class="btn-readd-cart" data-action="readd-item" data-item-name="${item.name}" data-item-price="${item.latestPrice}" data-item-cat="${item.category}" data-item-unit="${item.unit}">
-            <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
-            <span>+ 1-Tap Re-Add</span>
-          </button>
+          ${actionBtnHtml}
         </div>
       </div>
     `;
@@ -1304,52 +1345,109 @@ function openReceiptModal(sessionId) {
   const title = document.getElementById('receipt-modal-title');
   const body = document.getElementById('receipt-modal-body');
 
-  title.textContent = `Struk: ${session.title}`;
+  title.textContent = `Struk Belanja`;
 
-  const dateStr = new Date(session.date).toLocaleDateString('id-ID', {
+  const dateObj = new Date(session.date);
+  const dateStr = dateObj.toLocaleDateString('id-ID', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric'
   });
+  const timeStr = dateObj.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit'
+  }) + ' WIB';
 
   let itemsHtml = '';
   (session.items || []).forEach(item => {
     const line = calculateLineTotal(item);
     itemsHtml += `
       <div class="receipt-row">
-        <div>
-          <div style="font-weight: 700; color: var(--text-primary);">${item.name}</div>
-          <div style="font-size: 10px; color: var(--text-muted);">
+        <div style="flex: 1; min-width: 0; padding-right: 8px;">
+          <div style="font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.name)}</div>
+          <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 1px;">
             ${item.qty} ${item.unit || 'pcs'} × ${formatRupiah(line.finalUnitPrice)}
-            ${line.lineSavings > 0 ? `(Diskon ${line.discountLabel})` : ''}
+            ${line.lineSavings > 0 ? `<span style="color: #34d399; font-weight: 700;">(Hemat ${formatRupiah(line.lineSavings)})</span>` : ''}
           </div>
         </div>
-        <div style="font-weight: 800; color: var(--text-primary);">${formatRupiah(line.lineTotal)}</div>
+        <div style="font-weight: 800; color: var(--text-primary); flex-shrink: 0; text-align: right;">${formatRupiah(line.lineTotal)}</div>
       </div>
     `;
   });
 
+  const subtotalGross = session.totalSpent + (session.totalSavings || 0);
+  const remainingBudget = Math.max(0, (session.budgetLimit || 0) - session.totalSpent);
+
   body.innerHTML = `
-    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
-      Tanggal: ${dateStr}
-    </div>
-    <div class="receipt-table">
-      ${itemsHtml}
-    </div>
-    <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--border-medium); display: flex; justify-content: space-between; align-items: baseline;">
-      <span style="font-weight: 700; color: var(--text-secondary);">Total Akhir:</span>
-      <span style="font-size: 20px; font-weight: 800; color: #34d399;">${formatRupiah(session.totalSpent)}</span>
-    </div>
-    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-      <span>Batas Anggaran: ${formatRupiah(session.budgetLimit)}</span>
-      <span>Hemat: ${formatRupiah(session.totalSavings || 0)}</span>
+    <div class="paper-receipt-container">
+      <div class="receipt-paper-header">
+        <div class="receipt-store-brand">
+          <i data-lucide="store" style="width: 17px; height: 17px; color: var(--color-brand);"></i>
+          <span>${escapeHtml(session.title || 'Supermarket')}</span>
+        </div>
+        <div class="receipt-doc-title">BUKTI STRUK PEMBELANJAAN RESMI</div>
+        <div class="receipt-meta-row">
+          <span>${dateStr} • ${timeStr}</span>
+          <span>${session.itemsCount || (session.items ? session.items.length : 0)} Barang</span>
+        </div>
+      </div>
+
+      <div class="receipt-divider-dashed"></div>
+
+      <div class="receipt-table">
+        ${itemsHtml}
+      </div>
+
+      <div class="receipt-divider-dashed"></div>
+
+      <div class="receipt-totals-section">
+        <div class="receipt-sum-row">
+          <span>Subtotal Item:</span>
+          <span>${formatRupiah(subtotalGross)}</span>
+        </div>
+        ${session.totalSavings > 0 ? `
+        <div class="receipt-sum-row receipt-savings-row">
+          <span>Total Penghematan:</span>
+          <span>- ${formatRupiah(session.totalSavings)}</span>
+        </div>` : ''}
+        <div class="receipt-sum-row receipt-grand-total">
+          <span>TOTAL AKHIR:</span>
+          <span class="grand-total-num">${formatRupiah(session.totalSpent)}</span>
+        </div>
+        <div class="receipt-sum-row" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+          <span>Batas Anggaran Dompet:</span>
+          <span>${formatRupiah(session.budgetLimit)}</span>
+        </div>
+        <div class="receipt-sum-row" style="font-size: 11px; color: #34d399;">
+          <span>Sisa Uang Dingin:</span>
+          <span>${formatRupiah(remainingBudget)}</span>
+        </div>
+      </div>
+
+      <div class="receipt-divider-dashed"></div>
+
+      <div class="receipt-footer-msg">
+        <p style="margin: 0 0 4px 0;">❤️ Terima kasih telah berbelanja cerdas bersama Smart Grocery.</p>
+        <p style="margin: 0; font-size: 9.5px; color: var(--text-muted);">Data otomatis tersimpan ke riwayat untuk acuan perbandingan harga belanja bulan depan.</p>
+      </div>
+
+      <div style="margin-top: 14px; display: flex; gap: 8px;">
+        <button type="button" class="btn-secondary-flat" id="btn-close-receipt-bottom" style="flex: 1; height: 42px; font-weight: 700; justify-content: center; border-radius: var(--radius-sm);">
+          Selesai & Tutup
+        </button>
+      </div>
     </div>
   `;
 
   backdrop.classList.add('active');
   backdrop.setAttribute('aria-hidden', 'false');
   refreshIcons();
+
+  const closeBottomBtn = document.getElementById('btn-close-receipt-bottom');
+  if (closeBottomBtn) {
+    closeBottomBtn.onclick = closeReceiptModal;
+  }
 }
 
 function closeReceiptModal() {
@@ -1398,13 +1496,59 @@ function handleConfirmClearCart() {
 }
 
 /* ==========================================================================
-   Checkout Cart Flow (F-06 Selesaikan & Simpan Belanja)
+   Checkout Cart Flow (F-06 Selesaikan & Simpan Belanja dengan Konfirmasi)
    ========================================================================== */
-function handleCheckoutSession() {
+function openConfirmCheckoutModal() {
   if (state.cart.length === 0) {
     showToast('Troli masih kosong! Tambahkan barang terlebih dahulu.', 'alert-triangle');
     return;
   }
+
+  playTap();
+  const summary = calculateCartSummary(state.cart, state.budget);
+  const activeStore = getActiveStore();
+
+  const storeEl = document.getElementById('confirm-store-name');
+  const countEl = document.getElementById('confirm-items-count');
+  const totalEl = document.getElementById('confirm-total-spent');
+  const remainEl = document.getElementById('confirm-remaining-budget');
+
+  if (storeEl) storeEl.textContent = activeStore;
+  if (countEl) countEl.textContent = `${summary.totalLines} jenis (${summary.totalItemsCount} item)`;
+  if (totalEl) totalEl.textContent = formatRupiah(summary.totalSpent);
+  if (remainEl) {
+    const sisa = summary.remainingBudget >= 0 
+      ? formatRupiah(summary.remainingBudget) 
+      : `Minus ${formatRupiah(Math.abs(summary.remainingBudget))}`;
+    remainEl.textContent = sisa;
+    remainEl.style.color = summary.safetyStatus === 'danger' ? '#ef4444' : '#34d399';
+  }
+
+  const backdrop = document.getElementById('modal-confirm-checkout-backdrop');
+  if (backdrop) {
+    backdrop.classList.add('active');
+    backdrop.setAttribute('aria-hidden', 'false');
+    refreshIcons();
+  }
+}
+
+function closeConfirmCheckoutModal() {
+  playTap();
+  const backdrop = document.getElementById('modal-confirm-checkout-backdrop');
+  if (backdrop) {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function handleCheckoutSession() {
+  openConfirmCheckoutModal();
+}
+
+function executeFinalCheckout() {
+  closeConfirmCheckoutModal();
+
+  if (state.cart.length === 0) return;
 
   const summary = calculateCartSummary(state.cart, state.budget);
 
@@ -1422,13 +1566,6 @@ function handleCheckoutSession() {
 
   // Save session into DB (F-06 with active store name)
   const activeStore = getActiveStore();
-  const now = new Date();
-  const monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ];
-  const monthLabel = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
-
   const savedSession = DB.checkoutCartSession({
     title: `Belanja di ${activeStore}`,
     budgetLimit: state.budget,
@@ -1445,10 +1582,17 @@ function handleCheckoutSession() {
   renderHistoryScreen();
   renderAnggaranScreen();
   renderMostFrequentlyBought();
+  renderBelanjaScreen();
+  renderKonklusiScreen();
 
   // Switch to Riwayat tab to view saved session
   switchTab('riwayat');
-  showToast(`🎉 Belanja selesai! Tersimpan ke Riwayat & acuan harga bulan depan.`, 'sparkles');
+  showToast(`🎉 Belanja selesai! Struk Anda telah terbit.`, 'receipt');
+
+  // Immediately display the shopping receipt!
+  setTimeout(() => {
+    openReceiptModal(savedSession.id);
+  }, 350);
 }
 
 /* ==========================================================================
@@ -1614,6 +1758,99 @@ const SUPERMARKET_CATALOG = [
   { name: 'Paseo Facial Tissue 250s', category: 'Toiletries', unit: 'pack', price: 15000, emoji: '🧻' }
 ];
 
+function handleCatalogAdd(name, price, category, unit) {
+  const check = checkBudgetLimitEnforcement({
+    currentCart: state.cart,
+    budgetLimit: state.budget,
+    itemPrice: price,
+    qty: 1,
+    itemName: name
+  });
+
+  if (!check.allowed) {
+    showHardBudgetAlertModal(check, { name, price, category, unit });
+    return;
+  }
+
+  const existing = state.cart.find(c => c.name.toLowerCase() === name.toLowerCase());
+  if (existing) {
+    existing.qty = (existing.qty || 1) + 1;
+    playAdd();
+    showToast(`Kuantitas "${name}" ditambah (+1)`, 'check-circle');
+  } else {
+    state.cart.unshift({
+      id: 'item-' + Date.now(),
+      name,
+      category,
+      unit,
+      qty: 1,
+      price,
+      finalPrice: price,
+      checked: true,
+      discount: { type: 'none' }
+    });
+    playAdd();
+    showToast(`"${name}" masuk ke keranjang`, 'shopping-bag');
+  }
+
+  DB.saveCartItems(state.cart);
+  updateCloudSyncStatus('saving');
+  setTimeout(() => updateCloudSyncStatus('saved'), 700);
+
+  renderSafetyCap();
+  renderBelanjaScreen();
+  renderCartItems();
+  renderMostFrequentlyBought();
+  renderKonklusiScreen();
+}
+
+function handleCatalogQtyStep(itemName, delta) {
+  const inCart = state.cart.find(c => c.name.toLowerCase() === itemName.toLowerCase());
+  if (!inCart) return;
+
+  if (delta > 0) {
+    const itemPrice = inCart.price || inCart.finalPrice || 0;
+    const check = checkBudgetLimitEnforcement({
+      currentCart: state.cart,
+      budgetLimit: state.budget,
+      itemPrice: itemPrice,
+      qty: 1,
+      itemName
+    });
+
+    if (!check.allowed) {
+      showHardBudgetAlertModal(check, {
+        name: itemName,
+        price: itemPrice,
+        category: inCart.category,
+        unit: inCart.unit
+      });
+      return;
+    }
+
+    inCart.qty = (inCart.qty || 1) + 1;
+    playAdd();
+  } else {
+    playTap();
+    if ((inCart.qty || 1) > 1) {
+      inCart.qty -= 1;
+    } else {
+      state.cart = state.cart.filter(c => c.id !== inCart.id);
+      showToast(`"${itemName}" dikeluarkan dari keranjang`, 'trash-2');
+    }
+  }
+
+  DB.saveCartItems(state.cart);
+  updateCloudSyncStatus('saving');
+  setTimeout(() => updateCloudSyncStatus('saved'), 700);
+
+  renderSafetyCap();
+  renderBelanjaScreen();
+  renderCartItems();
+  renderMostFrequentlyBought();
+  renderKonklusiScreen();
+}
+
 function renderBelanjaScreen() {
   const jumpText = document.getElementById('jump-cart-text');
   if (jumpText) {
@@ -1634,65 +1871,69 @@ function renderBelanjaScreen() {
     return;
   }
 
-  catalogContainer.innerHTML = filteredCatalog.map(item => `
-    <div class="catalog-item-card">
-      <div class="cic-top">
-        <span class="cic-emoji">${item.emoji}</span>
-        <div class="cic-details">
-          <div class="cic-name">${escapeHtml(item.name)}</div>
-          <div class="cic-category">${escapeHtml(item.category)} • /${item.unit}</div>
+  catalogContainer.innerHTML = filteredCatalog.map(item => {
+    const inCart = state.cart.find(c => c.name.toLowerCase() === item.name.toLowerCase());
+    const qty = inCart ? (inCart.qty || 1) : 0;
+
+    let actionBtnHtml = '';
+    if (inCart && qty > 0) {
+      actionBtnHtml = `
+        <div class="catalog-qty-stepper">
+          <button type="button" class="catalog-qty-btn" data-action="cat-qty-minus" data-catalog-name="${escapeHtml(item.name)}" aria-label="Kurangi kuantitas">-</button>
+          <span class="catalog-qty-num">${qty}</span>
+          <button type="button" class="catalog-qty-btn" data-action="cat-qty-plus" data-catalog-name="${escapeHtml(item.name)}" aria-label="Tambah kuantitas">+</button>
         </div>
-      </div>
-      <div class="cic-bottom">
-        <span class="cic-price">${formatRupiah(item.price)}</span>
+      `;
+    } else {
+      actionBtnHtml = `
         <button type="button" class="btn-catalog-add" data-catalog-name="${escapeHtml(item.name)}" data-catalog-price="${item.price}" data-catalog-cat="${item.category}" data-catalog-unit="${item.unit}">
           <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
           <span>Tambah</span>
         </button>
+      `;
+    }
+
+    return `
+      <div class="catalog-item-card ${inCart ? 'in-cart' : ''}">
+        <div class="cic-top">
+          <span class="cic-emoji">${item.emoji}</span>
+          <div class="cic-details">
+            <div class="cic-name">${escapeHtml(item.name)}</div>
+            <div class="cic-category">${escapeHtml(item.category)} • /${item.unit}</div>
+          </div>
+        </div>
+        <div class="cic-bottom">
+          <span class="cic-price">${formatRupiah(item.price)}</span>
+          ${actionBtnHtml}
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
-  // Add click listeners to catalog add buttons
-  catalogContainer.querySelectorAll('.btn-catalog-add').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const name = btn.dataset.catalogName;
-      const price = Number(btn.dataset.catalogPrice) || 0;
-      const category = btn.dataset.catalogCat || 'Umum';
-      const unit = btn.dataset.catalogUnit || 'pcs';
+  // Handle catalog interactions via delegation
+  catalogContainer.onclick = (e) => {
+    const addBtn = e.target.closest('.btn-catalog-add');
+    if (addBtn) {
+      const name = addBtn.dataset.catalogName;
+      const price = Number(addBtn.dataset.catalogPrice) || 0;
+      const category = addBtn.dataset.catalogCat || 'Umum';
+      const unit = addBtn.dataset.catalogUnit || 'pcs';
+      handleCatalogAdd(name, price, category, unit);
+      return;
+    }
 
-      // Check if already in cart
-      const existing = state.cart.find(c => c.name.toLowerCase() === name.toLowerCase());
-      if (existing) {
-        existing.qty = (existing.qty || 1) + 1;
-        playAdd();
-        showToast(`Kuantitas "${name}" ditambah (+1)`, 'check-circle');
-      } else {
-        state.cart.unshift({
-          id: 'item-' + Date.now(),
-          name,
-          category,
-          unit,
-          qty: 1,
-          price,
-          finalPrice: price,
-          checked: true,
-          discount: { type: 'none' }
-        });
-        playAdd();
-        showToast(`"${name}" masuk ke keranjang`, 'shopping-bag');
-      }
+    const plusBtn = e.target.closest('[data-action="cat-qty-plus"]');
+    if (plusBtn) {
+      handleCatalogQtyStep(plusBtn.dataset.catalogName, 1);
+      return;
+    }
 
-      DB.saveCartItems(state.cart);
-      updateCloudSyncStatus('saving');
-      setTimeout(() => updateCloudSyncStatus('saved'), 700);
-
-      renderSafetyCap();
-      renderBelanjaScreen();
-      renderCartItems();
-      renderKonklusiScreen();
-    });
-  });
+    const minusBtn = e.target.closest('[data-action="cat-qty-minus"]');
+    if (minusBtn) {
+      handleCatalogQtyStep(minusBtn.dataset.catalogName, -1);
+      return;
+    }
+  };
 
   refreshIcons();
 }
@@ -2256,6 +2497,18 @@ function setupEventListeners() {
   const mbContainer = document.getElementById('most-bought-carousel-container');
   if (mbContainer) {
     mbContainer.addEventListener('click', (e) => {
+      const plusBtn = e.target.closest('[data-action="cat-qty-plus"]');
+      if (plusBtn) {
+        handleCatalogQtyStep(plusBtn.dataset.catalogName, 1);
+        return;
+      }
+
+      const minusBtn = e.target.closest('[data-action="cat-qty-minus"]');
+      if (minusBtn) {
+        handleCatalogQtyStep(minusBtn.dataset.catalogName, -1);
+        return;
+      }
+
       const readdBtn = e.target.closest('[data-action="readd-item"]');
       if (readdBtn) {
         const product = {
@@ -2874,9 +3127,12 @@ function setupEventListeners() {
   const shopOptionsCart = document.getElementById('shop-options-cart-items-container');
   if (shopOptionsCart) shopOptionsCart.addEventListener('click', handleItemDelegation);
 
-  // Checkout Session Button (F-06)
+  // Checkout Session Button (F-06 & Shopee-style sticky bar)
   const checkoutBtn = document.getElementById('btn-checkout-session');
   if (checkoutBtn) checkoutBtn.addEventListener('click', handleCheckoutSession);
+
+  const shopeeCheckoutBtn = document.getElementById('btn-shopee-checkout');
+  if (shopeeCheckoutBtn) shopeeCheckoutBtn.addEventListener('click', handleCheckoutSession);
 
   // Clear Trolley Button & Confirmation Modal
   const btnClearCart = document.getElementById('btn-clear-cart');
@@ -2895,6 +3151,23 @@ function setupEventListeners() {
   if (clearCartBackdrop) {
     clearCartBackdrop.addEventListener('click', (e) => {
       if (e.target.id === 'modal-clear-cart-backdrop') closeClearCartModal();
+    });
+  }
+
+  // Checkout Confirmation Modal Listeners
+  const btnCloseConfirmCheckout = document.getElementById('btn-close-confirm-checkout');
+  if (btnCloseConfirmCheckout) btnCloseConfirmCheckout.addEventListener('click', closeConfirmCheckoutModal);
+
+  const btnCancelCheckout = document.getElementById('btn-cancel-checkout');
+  if (btnCancelCheckout) btnCancelCheckout.addEventListener('click', closeConfirmCheckoutModal);
+
+  const btnConfirmCheckoutExecute = document.getElementById('btn-confirm-checkout-execute');
+  if (btnConfirmCheckoutExecute) btnConfirmCheckoutExecute.addEventListener('click', executeFinalCheckout);
+
+  const confirmCheckoutBackdrop = document.getElementById('modal-confirm-checkout-backdrop');
+  if (confirmCheckoutBackdrop) {
+    confirmCheckoutBackdrop.addEventListener('click', (e) => {
+      if (e.target.id === 'modal-confirm-checkout-backdrop') closeConfirmCheckoutModal();
     });
   }
 

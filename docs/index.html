@@ -33,8 +33,8 @@
     }
   }
   </script>
-  <script type="module" crossorigin src="./assets/index-lzT_Bwju.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-cISB8g3U.css">
+  <script type="module" crossorigin src="./assets/index-Xu0nlwA0.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BfwJgYi-.css">
 </head>
 <body>
   <div id="app-root">
@@ -163,9 +163,15 @@
           </div>
         </div>
 
-        <!-- Requirement 1: Slim Progress Bar shown when scrolled/compressed -->
+        <!-- Header Compressed Progress Bar with Total Keranjang & Sisa Anggaran -->
         <div class="header-compressed-progress" id="header-compressed-progress" title="Progress Penggunaan Anggaran">
-          <div class="compressed-progress-fill fill-safe" id="compressed-meter-fill"></div>
+          <div class="compressed-progress-info">
+            <span class="cpi-spent" id="compressed-spent-text">Total: Rp 0</span>
+            <span class="cpi-remaining" id="compressed-remaining-text">Sisa: Rp 0</span>
+          </div>
+          <div class="header-compressed-meter-track">
+            <div class="compressed-progress-fill fill-safe" id="compressed-meter-fill"></div>
+          </div>
         </div>
       </header>
 
@@ -276,12 +282,23 @@
             <!-- Dynamically populated by app.js -->
           </div>
 
-          <!-- Quick Navigate to Konklusi Button -->
-          <button type="button" class="btn-primary-checkout" id="btn-keranjang-to-konklusi" style="margin-top: 14px; height: 46px;">
-            <i data-lucide="clipboard-check" style="width: 18px; height: 18px;"></i>
-            <span>Lihat Konklusi & Selesaikan Belanja</span>
-            <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
-          </button>
+          <!-- Shopee-style Sticky Bottom Checkout Bar (Floating at bottom of cart screen) -->
+          <div class="shopee-checkout-sticky-bar" id="shopee-checkout-bar">
+            <div class="scb-left">
+              <div class="scb-total-row">
+                <span class="scb-total-label">Total Belanja:</span>
+                <span class="scb-total-val" id="shopee-checkout-total">Rp 0</span>
+              </div>
+              <div class="scb-sub-row">
+                <span class="scb-sub-text" id="shopee-checkout-sub">Sisa Dompet: Rp 0</span>
+                <span class="scb-savings-text" id="shopee-checkout-savings">Hemat Rp 0</span>
+              </div>
+            </div>
+            <button type="button" class="btn-shopee-checkout" id="btn-shopee-checkout">
+              <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
+              <span id="shopee-checkout-btn-label">Checkout</span>
+            </button>
+          </div>
 
         </section>
 
@@ -993,6 +1010,62 @@
               <button type="button" class="btn-primary-checkout" id="btn-confirm-clear-cart" style="flex: 1; height: 44px; font-size: 13px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);">
                 <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i>
                 <span>Ya, Kosongkan</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- =================================================================
+           MODAL: KONFIRMASI CHECKOUT BELANJA
+           Dialog konfirmasi sebelum checkout & otomatis menerbitkan struk belanja
+           ================================================================= -->
+      <aside class="modal-backdrop" id="modal-confirm-checkout-backdrop" aria-hidden="true">
+        <div class="bottom-sheet" style="max-height: 60vh;">
+          <div class="sheet-handle-bar"></div>
+          <div class="sheet-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; color: #10b981;">
+                <i data-lucide="shopping-bag" style="width: 16px; height: 16px;"></i>
+              </div>
+              <h3 style="margin: 0; font-size: 15px; font-weight: 800;">Konfirmasi Checkout?</h3>
+            </div>
+            <button class="sheet-close-btn" id="btn-close-confirm-checkout" aria-label="Tutup">
+              <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+          <div class="sheet-body" style="padding-top: 14px;">
+            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.4; margin-bottom: 12px;">
+              Apakah Anda yakin ingin menyelesaikan belanja ini? Struk belanja lengkap akan langsung ditampilkan:
+            </p>
+
+            <!-- Preview Card -->
+            <div class="checkout-confirm-card" id="checkout-confirm-preview">
+              <div class="ccc-row">
+                <span class="ccc-label"><i data-lucide="store" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i> Supermarket</span>
+                <span class="ccc-val" id="confirm-store-name">Superindo Kaliurang</span>
+              </div>
+              <div class="ccc-row">
+                <span class="ccc-label">Jumlah Barang</span>
+                <span class="ccc-val" id="confirm-items-count">0 barang</span>
+              </div>
+              <div class="ccc-row" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-medium);">
+                <span class="ccc-label" style="font-weight: 700; color: var(--text-primary);">Total Belanja</span>
+                <span class="ccc-val ccc-total" id="confirm-total-spent">Rp 0</span>
+              </div>
+              <div class="ccc-row">
+                <span class="ccc-label">Sisa Anggaran</span>
+                <span class="ccc-val" id="confirm-remaining-budget" style="color: #34d399;">Rp 0</span>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 16px;">
+              <button type="button" class="btn-secondary-flat" id="btn-cancel-checkout" style="flex: 1; height: 44px; font-size: 13px; font-weight: 700; justify-content: center; border-radius: var(--radius-sm);">
+                Batal
+              </button>
+              <button type="button" class="btn-primary-checkout" id="btn-confirm-checkout-execute" style="flex: 1.2; height: 44px; font-size: 13px;">
+                <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
+                <span>Ya, Checkout</span>
               </button>
             </div>
           </div>

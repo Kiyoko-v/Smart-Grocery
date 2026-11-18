@@ -1,13 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="192" height="192">
   <defs>
-    <filter id="cartShadow192" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#000000" flood-opacity="0.32" />
+    <filter id="glowCyan192" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="20" result="blurOuter" />
+      <feFlood flood-color="#e0f8fe" flood-opacity="0.95" result="lightColor" />
+      <feComposite in="lightColor" in2="blurOuter" operator="in" result="outerGlow" />
+
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blurInner" />
+      <feFlood flood-color="#9ae1f5" flood-opacity="0.9" result="cyanColor" />
+      <feComposite in="cyanColor" in2="blurInner" operator="in" result="innerGlow" />
+
+      <feMerge>
+        <feMergeNode in="outerGlow" />
+        <feMergeNode in="innerGlow" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
     </filter>
   </defs>
 
-  <g filter="url(#cartShadow192)">
-    <path d="M104 132h56l32 160h192l24-120H168" fill="none" stroke="#10B981" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
-    <circle cx="216" cy="352" r="30" fill="#10B981" />
-    <circle cx="360" cy="352" r="30" fill="#10B981" />
+  <rect x="16" y="16" width="480" height="480" rx="128" fill="#0b1222" stroke="#1e293b" stroke-width="8" />
+
+  <g filter="url(#glowCyan192)">
+    <path d="M112 140h58l34 152h172l26-116H184" fill="none" stroke="#9ae1f5" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="216" cy="348" r="28" fill="#9ae1f5" />
+    <circle cx="352" cy="348" r="28" fill="#9ae1f5" />
   </g>
 </svg>

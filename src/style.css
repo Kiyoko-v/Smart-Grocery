@@ -2110,13 +2110,13 @@ body {
   }
 }
 
-/* Detail Receipt Modal */
+/* Detail Receipt Modal & Paper Layout */
 .receipt-table {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 .receipt-row {
@@ -2127,6 +2127,127 @@ body {
   background: var(--bg-surface-elevated);
   border-radius: var(--radius-xs);
   font-size: 12px;
+}
+
+/* Paper Struk Belanja Modal Styles */
+.paper-receipt-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.receipt-paper-header {
+  text-align: center;
+  padding: 4px 0 8px;
+}
+
+.receipt-store-brand {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.receipt-doc-title {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  color: var(--color-brand);
+  margin-bottom: 4px;
+}
+
+.receipt-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.receipt-divider-dashed {
+  border-top: 1.5px dashed var(--border-medium);
+  margin: 10px 0;
+  width: 100%;
+}
+
+.receipt-sum-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.receipt-sum-row span:last-child {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.receipt-savings-row {
+  color: #34d399 !important;
+}
+
+.receipt-savings-row span:last-child {
+  color: #34d399 !important;
+}
+
+.receipt-grand-total {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--text-primary);
+  padding: 8px 0;
+  margin: 6px 0;
+  border-top: 1px dashed var(--border-medium);
+  border-bottom: 1px dashed var(--border-medium);
+}
+
+.receipt-grand-total .grand-total-num {
+  font-size: 19px;
+  color: #34d399 !important;
+}
+
+.receipt-footer-msg {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.45;
+  padding: 0 4px;
+}
+
+/* Checkout Confirmation Preview Card */
+.checkout-confirm-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ccc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+}
+
+.ccc-label {
+  color: var(--text-secondary);
+}
+
+.ccc-val {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ccc-total {
+  font-size: 16px;
+  font-weight: 800;
+  color: #34d399;
 }
 
 /* ==========================================================================
@@ -3785,21 +3906,51 @@ body,
   transform: translateY(-6px);
 }
 
-/* Slim glowing progress bar visible ONLY when header is compressed */
+/* Slim glowing progress bar with Total & Sisa visible ONLY when header is compressed */
 .header-compressed-progress {
   display: none;
   width: 100%;
-  height: 4.5px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  overflow: hidden;
-  margin-top: 3px;
+  margin-top: 4px;
   position: relative;
 }
 
 .app-header.header-compressed .header-compressed-progress {
   display: block;
   animation: fadeIn 0.2s ease-out;
+}
+
+.compressed-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  margin-bottom: 3px;
+  padding: 0 1px;
+}
+
+.cpi-spent {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.cpi-remaining {
+  font-weight: 700;
+  transition: color 0.2s ease;
+}
+
+.cpi-remaining.cpi-safe { color: #34d399; }
+.cpi-remaining.cpi-caution { color: #fbbf24; }
+.cpi-remaining.cpi-warning { color: #f97316; }
+.cpi-remaining.cpi-danger { color: #ef4444; font-weight: 800; }
+
+.header-compressed-meter-track {
+  width: 100%;
+  height: 4.5px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
 }
 
 .compressed-progress-fill {
@@ -4043,6 +4194,177 @@ body,
   border-color: #f87171;
 }
 
+/* Shopee-style Sticky Bottom Checkout Bar */
+.shopee-checkout-sticky-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.45);
+  z-index: 50;
+  margin-top: 16px;
+}
+
+.scb-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.scb-total-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.scb-total-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.scb-total-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #34d399;
+}
+
+.scb-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.scb-savings-text {
+  color: #34d399;
+  font-weight: 700;
+}
+
+.btn-shopee-checkout {
+  height: 42px;
+  padding: 0 18px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+  transition: var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.btn-shopee-checkout:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+[data-theme="light"] .shopee-checkout-sticky-bar {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.12) !important;
+}
+
+[data-theme="light"] .scb-total-val {
+  color: #059669 !important;
+}
+
+/* Belanja Tab: Catalog Quantity Steppers */
+.catalog-qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1.5px solid var(--color-brand);
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+  gap: 6px;
+  height: 28px;
+}
+
+.catalog-qty-btn {
+  width: 22px;
+  height: 22px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  padding: 0;
+  line-height: 1;
+}
+
+.catalog-qty-btn:active {
+  transform: scale(0.9);
+  background: var(--color-brand);
+  color: #fff;
+}
+
+.catalog-qty-num {
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  min-width: 18px;
+  text-align: center;
+}
+
+.catalog-item-card.in-cart {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+}
+
+.mb-stepper {
+  width: 100%;
+  justify-content: space-between;
+  height: 28px;
+  margin-top: 4px;
+}
+
+[data-theme="light"] .catalog-qty-stepper {
+  background: #f0fdf4 !important;
+  border-color: #10b981 !important;
+}
+
+[data-theme="light"] .catalog-qty-btn {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .catalog-qty-num {
+  color: #065f46 !important;
+}
+
+[data-theme="light"] .catalog-item-card.in-cart {
+  border-color: #38bdf8 !important;
+  background: #f8fafc !important;
+}
+
 /* ==========================================================================
    TAB KONKLUSI: RICH SHOPPING CONCLUSION (Requirement 6)
    ========================================================================== */
@@ -4178,7 +4500,15 @@ body,
 }
 
 [data-theme="light"] .header-compressed-progress {
+  background: transparent !important;
+}
+
+[data-theme="light"] .header-compressed-meter-track {
   background: #e2e8f0 !important;
+}
+
+[data-theme="light"] .cpi-spent {
+  color: #0f172a !important;
 }
 
 [data-theme="light"] .cloud-sync-status {
@@ -4216,4 +4546,21 @@ body,
 [data-theme="light"] .kit-row {
   background: #f8fafc !important;
   border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .checkout-confirm-card {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .ccc-total {
+  color: #059669 !important;
+}
+
+[data-theme="light"] .receipt-store-brand {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .receipt-grand-total .grand-total-num {
+  color: #059669 !important;
 }
