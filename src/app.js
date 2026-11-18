@@ -356,14 +356,29 @@ function renderSafetyCap() {
     compressedRemaining.className = `cpi-remaining cpi-${summary.safetyStatus}`;
   }
 
-  // Shopee-style sticky bottom checkout bar
+  // Shopee-style sticky bottom checkout bar (Direct numbers only - no cluttered text prefixes)
   const scbTotal = document.getElementById('shopee-checkout-total');
   const scbSub = document.getElementById('shopee-checkout-sub');
   const scbSavings = document.getElementById('shopee-checkout-savings');
   const scbBtn = document.getElementById('shopee-checkout-btn-label');
   if (scbTotal) scbTotal.textContent = formatRupiah(summary.totalSpent);
-  if (scbSub) scbSub.textContent = `Sisa Dompet: ${formatRupiah(summary.remainingBudget)}`;
-  if (scbSavings) scbSavings.textContent = `Hemat ${formatRupiah(summary.totalSavings)}`;
+  if (scbSub) {
+    if (summary.remainingBudget < 0) {
+      scbSub.textContent = `-${formatRupiah(Math.abs(summary.remainingBudget))}`;
+      scbSub.style.color = '#ef4444';
+    } else {
+      scbSub.textContent = formatRupiah(summary.remainingBudget);
+      scbSub.style.color = 'var(--text-muted)';
+    }
+  }
+  if (scbSavings) {
+    if (summary.totalSavings > 0) {
+      scbSavings.textContent = formatRupiah(summary.totalSavings);
+      scbSavings.style.display = 'inline';
+    } else {
+      scbSavings.style.display = 'none';
+    }
+  }
   if (scbBtn) scbBtn.textContent = `Checkout (${summary.totalLines})`;
 
   // Quick summary in Belanja & Keranjang tab
