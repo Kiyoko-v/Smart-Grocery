@@ -1,21 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="192" height="192">
   <defs>
-    <linearGradient id="bgGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0F172A" />
-      <stop offset="50%" stop-color="#1E293B" />
-      <stop offset="100%" stop-color="#0F2826" />
-    </linearGradient>
-    <linearGradient id="cartGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#10B981" />
-      <stop offset="100%" stop-color="#06B6D4" />
-    </linearGradient>
+    <filter id="neonGlow192" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="16" result="blur1" />
+      <feGaussianBlur stdDeviation="32" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <radialGradient id="bgGlow192" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#141E38" />
+      <stop offset="70%" stop-color="#0B101E" />
+      <stop offset="100%" stop-color="#060A14" />
+    </radialGradient>
   </defs>
-  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#bgGrad192)" stroke="#334155" stroke-width="8"/>
-  <g fill="none" stroke="url(#cartGrad192)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M120 150h54l36 170h184l32-136H166" />
-    <circle cx="220" cy="370" r="20" fill="#10B981" />
-    <circle cx="380" cy="370" r="20" fill="#10B981" />
+
+  <rect width="512" height="512" rx="116" fill="url(#bgGlow192)" stroke="#1E2A4A" stroke-width="8" />
+
+  <circle cx="256" cy="256" r="130" fill="#3B82F6" opacity="0.18" />
+
+  <g filter="url(#neonGlow192)">
+    <!-- Outer brighter glowing stroke layer -->
+    <path d="M104 132h56l32 160h192l24-120H168" fill="none" stroke="#4F70ED" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />
+    <circle cx="216" cy="352" r="28" fill="#4F70ED" opacity="0.85" />
+    <circle cx="360" cy="352" r="28" fill="#4F70ED" opacity="0.85" />
+
+    <!-- Core symbol in requested #25367D color -->
+    <path d="M104 132h56l32 160h192l24-120H168" fill="none" stroke="#25367D" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="216" cy="352" r="22" fill="#25367D" />
+    <circle cx="360" cy="352" r="22" fill="#25367D" />
   </g>
-  <circle cx="350" cy="140" r="44" fill="#3B82F6"/>
-  <path d="M336 140l10 10 18-18" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

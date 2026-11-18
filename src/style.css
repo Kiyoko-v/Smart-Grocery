@@ -189,13 +189,23 @@ body {
   border-bottom: 1px solid var(--border-subtle);
   padding: 8px 14px 6px;
   flex-shrink: 0;
+  transition: padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Header Compressed Mode on Scroll (Requirement 1 & 3) */
+.app-header.header-compressed {
+  padding: 6px 14px 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  background: rgba(11, 16, 27, 0.96);
 }
 
 .header-top-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .brand-badge {
@@ -203,23 +213,42 @@ body {
   align-items: center;
   gap: 8px;
   white-space: nowrap;
+  min-width: 0;
+  flex: 1;
 }
 
+/* Requirement 4: Center shopping cart symbol in #25367d with brighter glowing aura */
 .brand-icon-wrapper {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: radial-gradient(circle at 35% 35%, #3b50a8 0%, #25367d 60%, #16204c 100%);
+  border: 1px solid rgba(79, 112, 237, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(67, 97, 238, 0.55), 0 3px 10px rgba(15, 23, 42, 0.5);
   flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.brand-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
 }
 
 .brand-text h1 {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: -0.3px;
   color: #fff;
@@ -227,13 +256,82 @@ body {
   white-space: nowrap;
 }
 
-.brand-text .sub-tag {
-  font-size: 9px;
-  color: var(--color-brand);
+/* Requirement 3: Google Docs-style Cloud Saved status indicator */
+.cloud-sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1.5px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 9.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #94a3b8;
+  cursor: default;
+  user-select: none;
+  transition: all var(--transition-fast);
+}
+
+.cloud-sync-status.saved {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.1);
+}
+
+.cloud-sync-status.saving {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.cloud-sync-status.saving i {
+  animation: spinSync 1s linear infinite;
+}
+
+@keyframes spinSync {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.cloud-sync-status.offline {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+/* Requirement 3: Day & Date Badge next to title */
+.header-date-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  padding: 1.5px 6px;
+  border-radius: var(--radius-full);
   white-space: nowrap;
+}
+
+/* Requirement 3: Store Name underneath Smart Grocery (replacing motto) */
+.header-store-sub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-brand);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 190px;
+  margin-top: 1px;
+  transition: color var(--transition-fast);
+}
+
+.header-store-sub:hover {
+  text-decoration: underline;
+  color: #38bdf8;
 }
 
 .header-actions {
@@ -3603,4 +3701,411 @@ body,
 
 .btn-delete-store:hover {
   color: #ef4444;
+}
+
+/* ==========================================================================
+   HEADER COMPRESSION ON SCROLL (Requirement 1 & 3)
+   ========================================================================== */
+#safety-cap-hero,
+#store-selector-trigger {
+  transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease,
+              margin 0.25s ease,
+              padding 0.25s ease,
+              border-width 0.25s ease,
+              transform 0.25s ease;
+  max-height: 250px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.app-header.header-compressed #safety-cap-hero,
+.app-header.header-compressed #store-selector-trigger {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-width: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(-6px);
+}
+
+/* Slim glowing progress bar visible ONLY when header is compressed */
+.header-compressed-progress {
+  display: none;
+  width: 100%;
+  height: 4.5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 3px;
+  position: relative;
+}
+
+.app-header.header-compressed .header-compressed-progress {
+  display: block;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.compressed-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* ==========================================================================
+   TAB BELANJA: JUMP TO CART BANNER & CATALOG SHELF
+   ========================================================================== */
+.quick-cart-jump-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.12) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.qcjb-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #34d399;
+}
+
+.btn-jump-cart {
+  background: var(--color-brand);
+  color: #052e16;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: var(--transition-fast);
+}
+
+.btn-jump-cart:active {
+  transform: scale(0.94);
+}
+
+/* Catalog Shelf in Tab Belanja */
+.catalog-shelf-section {
+  margin-top: 14px;
+}
+
+.catalog-shelf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.catalog-shelf-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.catalog-shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.catalog-item-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  transition: var(--transition-fast);
+}
+
+.catalog-item-card:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  transform: translateY(-1px);
+}
+
+.cic-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cic-emoji {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.cic-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.cic-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cic-category {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.cic-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.cic-price {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--color-brand);
+}
+
+.btn-catalog-add {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: var(--radius-full);
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transition: var(--transition-fast);
+}
+
+.btn-catalog-add:active {
+  transform: scale(0.92);
+  background: var(--color-brand);
+  color: #052e16;
+}
+
+/* ==========================================================================
+   TAB KERANJANG (Requirement 5)
+   ========================================================================== */
+.keranjang-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.keranjang-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.keranjang-badge {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--color-brand);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+}
+
+/* ==========================================================================
+   TAB KONKLUSI: RICH SHOPPING CONCLUSION (Requirement 6)
+   ========================================================================== */
+.konklusi-hero-card {
+  background: linear-gradient(145deg, #182236 0%, #111a2c 100%);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.konklusi-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.konklusi-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: var(--color-brand);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.konklusi-store-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 3px 0 1px;
+}
+
+.konklusi-date-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.konklusi-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.konklusi-stat-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.konklusi-stat-box.highlight {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.ksb-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ksb-val {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+
+.ksb-val.spent {
+  color: #38bdf8;
+  font-size: 16px;
+}
+
+.ksb-val.remaining {
+  color: #34d399;
+}
+
+.ksb-val.savings {
+  color: #f59e0b;
+}
+
+.konklusi-meter-section {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-xs);
+  padding: 8px 10px;
+}
+
+.konklusi-items-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.kit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-xs);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 11.5px;
+}
+
+.kit-name {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.kit-qty {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.kit-price {
+  font-weight: 800;
+  color: var(--color-brand);
+}
+
+/* Light Mode Overrides for newly added components */
+[data-theme="light"] .app-header.header-compressed {
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-theme="light"] .header-compressed-progress {
+  background: #e2e8f0 !important;
+}
+
+[data-theme="light"] .cloud-sync-status {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+[data-theme="light"] .header-date-badge {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+[data-theme="light"] .catalog-item-card {
+  background: #ffffff !important;
+  border-color: #bae6fd !important;
+}
+
+[data-theme="light"] .konklusi-hero-card {
+  background: #ffffff !important;
+  border-color: #bae6fd !important;
+  box-shadow: 0 4px 16px rgba(135, 206, 235, 0.25) !important;
+}
+
+[data-theme="light"] .konklusi-store-title {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .konklusi-stat-box {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .kit-row {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
 }

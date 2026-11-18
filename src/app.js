@@ -221,10 +221,20 @@ function renderSafetyCap() {
     navBadge.style.display = state.cart.length > 0 ? 'flex' : 'none';
   }
 
-  // Quick summary in Belanja tab
+  // Requirement 1: Update compressed progress bar in sticky header
+  const compressedFill = document.getElementById('compressed-meter-fill');
+  if (compressedFill) {
+    compressedFill.style.width = `${fillWidth}%`;
+    compressedFill.className = `compressed-progress-fill fill-${summary.safetyStatus}`;
+  }
+
+  // Quick summary in Belanja & Keranjang tab
   const countTag = document.getElementById('summary-items-count');
   const savingsText = document.getElementById('summary-savings-text');
   const checkoutTotal = document.getElementById('checkout-total-display');
+  const keranjangCount = document.getElementById('keranjang-items-count');
+  const keranjangTotal = document.getElementById('keranjang-total-display');
+  const jumpText = document.getElementById('jump-cart-text');
 
   if (countTag) {
     countTag.textContent = `${summary.totalItemsCount} item (${summary.checkedItemsCount} masuk troli)`;
@@ -234,6 +244,15 @@ function renderSafetyCap() {
   }
   if (checkoutTotal) {
     checkoutTotal.textContent = formatRupiah(summary.totalSpent);
+  }
+  if (keranjangCount) {
+    keranjangCount.textContent = `${summary.totalCount} barang`;
+  }
+  if (keranjangTotal) {
+    keranjangTotal.textContent = formatRupiah(summary.totalSpent);
+  }
+  if (jumpText) {
+    jumpText.textContent = `${summary.totalCount} barang dalam keranjang troli (${formatRupiah(summary.totalSpent)})`;
   }
 
   // Update Shop Options Sheet if open
@@ -1277,7 +1296,7 @@ function handleCheckoutSession() {
 }
 
 /* ==========================================================================
-   Tab Navigation Handler
+   Tab Navigation Handler (Requirement 5 & 6)
    ========================================================================== */
 function switchTab(tabName) {
   playTap();
@@ -1294,10 +1313,14 @@ function switchTab(tabName) {
   });
 
   if (tabName === 'belanja') {
-    renderCartItems();
+    renderBelanjaScreen();
     renderMostFrequentlyBought();
+  } else if (tabName === 'keranjang') {
+    renderCartItems();
   } else if (tabName === 'riwayat') {
     renderHistoryScreen();
+  } else if (tabName === 'konklusi') {
+    renderKonklusiScreen();
   } else if (tabName === 'anggaran') {
     renderAnggaranScreen();
   }
@@ -1367,6 +1390,320 @@ function renderStoreSelectorBar() {
   const nameEl = document.getElementById('display-active-store-name');
   if (nameEl) {
     nameEl.textContent = activeStore;
+  }
+  const headerStoreEl = document.getElementById('header-active-store-name');
+  if (headerStoreEl) {
+    headerStoreEl.textContent = activeStore;
+  }
+  const konklusiStoreEl = document.getElementById('konklusi-store-title');
+  if (konklusiStoreEl) {
+    konklusiStoreEl.textContent = activeStore;
+  }
+}
+
+/* ==========================================================================
+   Header Day, Date & Google Docs-style Cloud Sync (Requirement 3)
+   ========================================================================== */
+function renderHeaderDate() {
+  const dateEl = document.getElementById('header-date-badge');
+  const konklusiDateEl = document.getElementById('konklusi-date-sub');
+  const now = new Date();
+  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  const monthsLong = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+  const shortStr = `${days[now.getDay()]}, ${now.getDate()} ${monthsShort[now.getMonth()]}`;
+  const longStr = `${days[now.getDay()]}, ${now.getDate()} ${monthsLong[now.getMonth()]} ${now.getFullYear()}`;
+
+  if (dateEl) dateEl.textContent = shortStr;
+  if (konklusiDateEl) konklusiDateEl.textContent = longStr;
+}
+
+function updateCloudSyncStatus(status = 'saved') {
+  const container = document.getElementById('cloud-sync-status');
+  const icon = document.getElementById('cloud-sync-icon');
+  const text = document.getElementById('cloud-sync-text');
+  if (!container || !icon) return;
+
+  if (status === 'saving') {
+    container.className = 'cloud-sync-status saving';
+    icon.setAttribute('data-lucide', 'refresh-cw');
+    if (text) text.textContent = 'Menyimpan...';
+  } else if (status === 'saved') {
+    container.className = 'cloud-sync-status saved';
+    icon.setAttribute('data-lucide', 'cloud-check');
+    if (text) text.textContent = 'Tersimpan';
+  } else if (status === 'offline') {
+    container.className = 'cloud-sync-status offline';
+    icon.setAttribute('data-lucide', 'cloud-off');
+    if (text) text.textContent = 'Lokal';
+  }
+  refreshIcons();
+}
+
+/* ==========================================================================
+   Tab Belanja: Catalog & Fast 1-Tap Shelf
+   ========================================================================== */
+const SUPERMARKET_CATALOG = [
+  { name: 'Beras Sania 5kg', category: 'Sembako', unit: 'pack', price: 78000, emoji: '🍚' },
+  { name: 'Minyak Goreng Bimoli 2L', category: 'Sembako', unit: 'liter', price: 34000, emoji: '🛢️' },
+  { name: 'Telur Ayam Negeri 1kg', category: 'Sembako', unit: 'kg', price: 28000, emoji: '🥚' },
+  { name: 'Indomie Goreng (Pack isi 5)', category: 'Sembako', unit: 'pack', price: 15500, emoji: '🍜' },
+  { name: 'Biore Body Wash Refill 450ml', category: 'Toiletries', unit: 'pack', price: 24500, emoji: '🧼' },
+  { name: 'Shampoo Pantene 160ml', category: 'Toiletries', unit: 'botol', price: 27000, emoji: '🧴' },
+  { name: 'Susu UHT Ultra Milk 1L', category: 'Minuman', unit: 'dus', price: 19500, emoji: '🥛' },
+  { name: 'Kecap Manis Bango 520ml', category: 'Dapur & Bumbu', unit: 'botol', price: 22000, emoji: '🧂' },
+  { name: 'Fiesta Chicken Nugget 500g', category: 'Frozen & Segar', unit: 'pack', price: 45000, emoji: '🥩' },
+  { name: 'Sari Roti Tawar Spesial', category: 'Lain-lain', unit: 'pack', price: 16000, emoji: '🍞' },
+  { name: 'Kopi Kapal Api Special Mix', category: 'Minuman', unit: 'pack', price: 14500, emoji: '☕' },
+  { name: 'Paseo Facial Tissue 250s', category: 'Toiletries', unit: 'pack', price: 15000, emoji: '🧻' }
+];
+
+function renderBelanjaScreen() {
+  const jumpText = document.getElementById('jump-cart-text');
+  if (jumpText) {
+    const summary = calculateCartSummary(state.cart, state.budget);
+    jumpText.textContent = `${summary.totalCount} barang dalam keranjang troli (${formatRupiah(summary.totalSpent)})`;
+  }
+
+  const catalogContainer = document.getElementById('catalog-shelf-grid');
+  if (!catalogContainer) return;
+
+  const filteredCatalog = SUPERMARKET_CATALOG.filter(item => {
+    if (!state.activeFilter || state.activeFilter === 'ALL') return true;
+    return item.category === state.activeFilter;
+  });
+
+  if (filteredCatalog.length === 0) {
+    catalogContainer.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 20px; font-size: 12px; color: var(--text-muted);">Tidak ada katalog di kategori ini. Gunakan tombol (+) untuk menambah barang kustom.</div>`;
+    return;
+  }
+
+  catalogContainer.innerHTML = filteredCatalog.map(item => `
+    <div class="catalog-item-card">
+      <div class="cic-top">
+        <span class="cic-emoji">${item.emoji}</span>
+        <div class="cic-details">
+          <div class="cic-name">${escapeHtml(item.name)}</div>
+          <div class="cic-category">${escapeHtml(item.category)} • /${item.unit}</div>
+        </div>
+      </div>
+      <div class="cic-bottom">
+        <span class="cic-price">${formatRupiah(item.price)}</span>
+        <button type="button" class="btn-catalog-add" data-catalog-name="${escapeHtml(item.name)}" data-catalog-price="${item.price}" data-catalog-cat="${item.category}" data-catalog-unit="${item.unit}">
+          <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
+          <span>Tambah</span>
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  // Add click listeners to catalog add buttons
+  catalogContainer.querySelectorAll('.btn-catalog-add').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.catalogName;
+      const price = Number(btn.dataset.catalogPrice) || 0;
+      const category = btn.dataset.catalogCat || 'Umum';
+      const unit = btn.dataset.catalogUnit || 'pcs';
+
+      // Check if already in cart
+      const existing = state.cart.find(c => c.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        existing.qty = (existing.qty || 1) + 1;
+        playAdd();
+        showToast(`Kuantitas "${name}" ditambah (+1)`, 'check-circle');
+      } else {
+        state.cart.unshift({
+          id: 'item-' + Date.now(),
+          name,
+          category,
+          unit,
+          qty: 1,
+          price,
+          finalPrice: price,
+          checked: true,
+          discount: { type: 'none' }
+        });
+        playAdd();
+        showToast(`"${name}" masuk ke keranjang`, 'shopping-bag');
+      }
+
+      DB.saveCartItems(state.cart);
+      updateCloudSyncStatus('saving');
+      setTimeout(() => updateCloudSyncStatus('saved'), 700);
+
+      renderSafetyCap();
+      renderBelanjaScreen();
+      renderCartItems();
+      renderKonklusiScreen();
+    });
+  });
+
+  refreshIcons();
+}
+
+/* ==========================================================================
+   Tab Konklusi: Rich Shopping Summary & Checkout (Requirement 6)
+   ========================================================================== */
+function renderKonklusiScreen() {
+  const summary = calculateCartSummary(state.cart, state.budget);
+  renderHeaderDate();
+
+  const storeEl = document.getElementById('konklusi-store-title');
+  if (storeEl) storeEl.textContent = getActiveStore();
+
+  const statusBadge = document.getElementById('konklusi-status-badge');
+  const statusText = document.getElementById('konklusi-status-text');
+  if (statusBadge && statusText) {
+    statusBadge.className = `safety-badge badge-${summary.safetyStatus}`;
+    if (summary.safetyStatus === 'safe') statusText.textContent = 'Aman';
+    else if (summary.safetyStatus === 'caution') statusText.textContent = 'Hati-hati';
+    else if (summary.safetyStatus === 'warning') statusText.textContent = 'Kritis!';
+    else if (summary.safetyStatus === 'danger') statusText.textContent = 'OVER BUDGET';
+  }
+
+  const spentEl = document.getElementById('konklusi-total-spent');
+  if (spentEl) spentEl.textContent = formatRupiah(summary.totalSpent);
+
+  const limitEl = document.getElementById('konklusi-budget-limit');
+  if (limitEl) limitEl.textContent = formatRupiah(summary.budget);
+
+  const remainingEl = document.getElementById('konklusi-remaining');
+  if (remainingEl) {
+    if (summary.remainingBudget < 0) {
+      remainingEl.innerHTML = `<span style="color: #ef4444;">-${formatRupiah(Math.abs(summary.remainingBudget))}</span>`;
+    } else {
+      remainingEl.textContent = formatRupiah(summary.remainingBudget);
+    }
+  }
+
+  const savingsEl = document.getElementById('konklusi-savings');
+  if (savingsEl) savingsEl.textContent = formatRupiah(summary.totalSavings);
+
+  const percentEl = document.getElementById('konklusi-percent-text');
+  if (percentEl) percentEl.textContent = `${summary.budgetUsagePercent}%`;
+
+  const fillEl = document.getElementById('konklusi-meter-fill');
+  if (fillEl) {
+    fillEl.style.width = `${Math.min(100, summary.budgetUsagePercent)}%`;
+    fillEl.className = `safety-meter-fill fill-${summary.safetyStatus}`;
+  }
+
+  const itemsCountEl = document.getElementById('konklusi-items-count');
+  if (itemsCountEl) {
+    const totalPcs = state.cart.reduce((a, b) => a + (b.qty || 1), 0);
+    itemsCountEl.textContent = `${state.cart.length} barang (${totalPcs} pcs)`;
+  }
+
+  // Mini Items Struk Preview in Konklusi
+  const tableContainer = document.getElementById('konklusi-items-table');
+  if (tableContainer) {
+    if (state.cart.length === 0) {
+      tableContainer.innerHTML = `
+        <div style="text-align: center; padding: 18px; font-size: 12px; color: var(--text-muted);">
+          Keranjang belanja masih kosong. Tambahkan barang di tab Belanja atau tekan (+) di bawah!
+        </div>
+      `;
+    } else {
+      tableContainer.innerHTML = state.cart.map(item => {
+        const line = calculateLineTotal(item);
+        return `
+          <div class="kit-row">
+            <div>
+              <span class="kit-name">${escapeHtml(item.name)}</span>
+              <span class="kit-qty">× ${item.qty} ${item.unit || 'pcs'}</span>
+            </div>
+            <span class="kit-price">${formatRupiah(line.lineTotal)}</span>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // Category Breakdown in Konklusi
+  const catContainer = document.getElementById('konklusi-category-breakdown');
+  if (catContainer) {
+    const categoryTotals = {};
+    state.cart.forEach(item => {
+      const cat = item.category || 'Lain-lain';
+      const line = calculateLineTotal(item);
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + line.lineTotal;
+    });
+
+    const entries = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+    if (entries.length === 0) {
+      catContainer.innerHTML = `<div style="text-align: center; padding: 12px; font-size: 11px; color: var(--text-muted);">Belum ada data pengeluaran kategori</div>`;
+    } else {
+      catContainer.innerHTML = entries.map(([cat, total]) => {
+        const pct = summary.totalSpent > 0 ? Math.round((total / summary.totalSpent) * 100) : 0;
+        return `
+          <div class="cat-bar-item" style="margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 700; margin-bottom: 3px;">
+              <span>${escapeHtml(cat)}</span>
+              <span style="color: var(--color-brand);">${formatRupiah(total)} (${pct}%)</span>
+            </div>
+            <div style="height: 6px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden;">
+              <div style="height: 100%; width: ${pct}%; background: linear-gradient(90deg, #10b981, #06b6d4); border-radius: 999px;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // Dynamic Contextual Advice
+  const adviceText = document.getElementById('konklusi-advice-text');
+  if (adviceText) {
+    if (state.cart.length === 0) {
+      adviceText.textContent = 'Keranjang troli Anda saat ini kosong. Pilih produk di supermarket untuk mulai memantau batasan dompet Anda secara realtime!';
+    } else if (summary.safetyStatus === 'safe') {
+      adviceText.innerHTML = `Total troli belanja masih <strong>sangat aman</strong>. Sisa uang dingin Anda sebesar <strong>${formatRupiah(summary.remainingBudget)}</strong> terjaga untuk tabungan akhir bulan.`;
+    } else if (summary.safetyStatus === 'caution') {
+      adviceText.innerHTML = `Pengeluaran telah mencapai <strong>${summary.budgetUsagePercent}%</strong> dari dompet. Disarankan memeriksa kembali apakah ada barang pelengkap yang bisa ditunda.`;
+    } else if (summary.safetyStatus === 'warning') {
+      adviceText.innerHTML = `Sisa uang belanja hanya tinggal <strong>${formatRupiah(summary.remainingBudget)}</strong>. Hindari menambah snack atau barang non-pokok agar tidak tekor saat di kasir!`;
+    } else if (summary.safetyStatus === 'danger') {
+      const over = Math.abs(summary.remainingBudget);
+      adviceText.innerHTML = `🚨 <strong style="color: #ef4444;">OVER BUDGET sebesar ${formatRupiah(over)}!</strong> Segera kurangi beberapa item dari keranjang sebelum membayar di kasir.`;
+    }
+  }
+
+  refreshIcons();
+}
+
+function handleShareKonklusiReceipt() {
+  playTap();
+  const activeStore = getActiveStore();
+  const summary = calculateCartSummary(state.cart, state.budget);
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  
+  let text = `🛒 *SMART GROCERY - STRUK BELANJA*\n`;
+  text += `📍 Toko: ${activeStore}\n`;
+  text += `📅 Tanggal: ${dateStr}\n`;
+  text += `────────────────────\n`;
+  state.cart.forEach((item, idx) => {
+    const line = calculateLineTotal(item);
+    text += `${idx + 1}. ${item.name} (${item.qty} ${item.unit || 'pcs'})\n`;
+    text += `   Rp ${formatNumber(line.lineTotal)}\n`;
+  });
+  text += `────────────────────\n`;
+  text += `💰 Total Belanja: ${formatRupiah(summary.totalSpent)}\n`;
+  text += `🎯 Batas Anggaran: ${formatRupiah(summary.budget)}\n`;
+  text += `🛡️ Sisa Uang Dingin: ${formatRupiah(summary.remainingBudget)}\n`;
+  if (summary.totalSavings > 0) {
+    text += `✨ Total Dihemat: ${formatRupiah(summary.totalSavings)}\n`;
+  }
+  text += `📌 Status: ${summary.safetyStatus.toUpperCase()}\n`;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Struk belanja berhasil disalin ke clipboard!', 'check-circle');
+    }).catch(() => {
+      showToast('Gagal menyalin struk.', 'alert-triangle');
+    });
+  } else {
+    showToast('Struk belanja siap dibagikan!', 'check-circle');
   }
 }
 
@@ -1574,12 +1911,18 @@ function registerPWA() {
    Setup Global Event Listeners
    ========================================================================== */
 function setupEventListeners() {
-  // Navigation Tabs (5 slots: Belanja, Riwayat, Floating Add, Anggaran, Profil)
+  // Navigation Tabs (5 slots: Belanja, Keranjang, Floating Add, Riwayat, Konklusi)
   const navBelanja = document.getElementById('nav-tab-belanja');
   if (navBelanja) navBelanja.addEventListener('click', () => switchTab('belanja'));
 
+  const navKeranjang = document.getElementById('nav-tab-keranjang');
+  if (navKeranjang) navKeranjang.addEventListener('click', () => switchTab('keranjang'));
+
   const navRiwayat = document.getElementById('nav-tab-riwayat');
   if (navRiwayat) navRiwayat.addEventListener('click', () => switchTab('riwayat'));
+
+  const navKonklusi = document.getElementById('nav-tab-konklusi');
+  if (navKonklusi) navKonklusi.addEventListener('click', () => switchTab('konklusi'));
 
   const navAnggaran = document.getElementById('nav-tab-anggaran');
   if (navAnggaran) navAnggaran.addEventListener('click', () => switchTab('anggaran'));
@@ -1588,9 +1931,53 @@ function setupEventListeners() {
   const btnFloatingAdd = document.getElementById('btn-floating-add-item');
   if (btnFloatingAdd) btnFloatingAdd.addEventListener('click', () => openDualAddModal());
 
-  // Bottom Navigation Profile Button
+  // Bottom Navigation Profile Button (if present)
   const btnNavProfil = document.getElementById('btn-nav-profil');
   if (btnNavProfil) btnNavProfil.addEventListener('click', openProfileModal);
+
+  // Requirement 1 & 3: Sticky Header Compression on scroll
+  const scrollContainer = document.getElementById('content-scroll-container');
+  const appHeader = document.querySelector('.app-header');
+  if (scrollContainer && appHeader) {
+    scrollContainer.addEventListener('scroll', () => {
+      const isScrolled = scrollContainer.scrollTop > 20;
+      appHeader.classList.toggle('header-compressed', isScrolled);
+    }, { passive: true });
+  }
+
+  // Requirement 3: Click store subtitle in header to change store when scrolled
+  const headerStoreSub = document.getElementById('header-store-sub');
+  if (headerStoreSub) {
+    headerStoreSub.addEventListener('click', openStoreSelectorModal);
+  }
+
+  // Belanja Tab: Jump to cart banner button
+  const btnJumpCart = document.getElementById('btn-jump-to-cart');
+  if (btnJumpCart) {
+    btnJumpCart.addEventListener('click', () => switchTab('keranjang'));
+  }
+
+  // Keranjang Tab: Jump to konklusi button
+  const btnKeranjangToKonklusi = document.getElementById('btn-keranjang-to-konklusi');
+  if (btnKeranjangToKonklusi) {
+    btnKeranjangToKonklusi.addEventListener('click', () => switchTab('konklusi'));
+  }
+
+  // Konklusi Tab: Actions (Requirement 6)
+  const btnKonklusiCheckout = document.getElementById('btn-konklusi-checkout');
+  if (btnKonklusiCheckout) {
+    btnKonklusiCheckout.addEventListener('click', handleCheckoutSession);
+  }
+
+  const btnKonklusiShare = document.getElementById('btn-konklusi-share');
+  if (btnKonklusiShare) {
+    btnKonklusiShare.addEventListener('click', handleShareKonklusiReceipt);
+  }
+
+  const btnKonklusiEditBudget = document.getElementById('btn-konklusi-edit-budget');
+  if (btnKonklusiEditBudget) {
+    btnKonklusiEditBudget.addEventListener('click', openBudgetModal);
+  }
 
   // Shop Options: Elongated Store Selector Bar (below Safety Cap)
   const storeTrigger = document.getElementById('store-selector-trigger');
@@ -2084,8 +2471,9 @@ function setupEventListeners() {
     });
   }
 
-  // Budget Limit Edit triggers
-  document.getElementById('btn-open-budget-modal').addEventListener('click', openBudgetModal);
+  // Budget Limit Edit triggers (Requirement 2: Dompet in header removed, quick edit button remains)
+  const btnOpenBudget = document.getElementById('btn-open-budget-modal');
+  if (btnOpenBudget) btnOpenBudget.addEventListener('click', openBudgetModal);
   document.getElementById('btn-edit-limit-quick').addEventListener('click', openBudgetModal);
   document.getElementById('btn-close-budget-modal').addEventListener('click', closeBudgetModal);
   document.getElementById('modal-budget-backdrop').addEventListener('click', (e) => {
@@ -2137,6 +2525,7 @@ function setupEventListeners() {
       chip.classList.add('active');
       state.activeFilter = chip.dataset.category;
       renderCartItems();
+      renderBelanjaScreen();
     });
   });
 
@@ -2486,25 +2875,30 @@ function initApp() {
     updateAuthUI(user);
   });
 
+  renderHeaderDate();
   renderSafetyCap();
   renderStoreSelectorBar();
+  renderBelanjaScreen();
   renderCartItems();
   renderMostFrequentlyBought();
+  renderKonklusiScreen();
   renderAnggaranScreen();
   registerPWA();
 
-  // Initialize Cloud Sync with Firestore
+  // Initialize Cloud Sync with Firestore (Requirement 3: Google Docs-style sync indicator, no spam toast)
   DB.initCloudSync((remoteData) => {
     if (remoteData) {
       if (Array.isArray(remoteData.cart)) state.cart = remoteData.cart;
       if (remoteData.budgetLimit) state.budget = remoteData.budgetLimit;
       if (Array.isArray(remoteData.history)) state.history = remoteData.history;
       renderSafetyCap();
+      renderBelanjaScreen();
       renderCartItems();
       renderMostFrequentlyBought();
+      renderKonklusiScreen();
       renderAnggaranScreen();
       renderHistoryScreen();
-      showToast('Data tersinkronisasi ke cloud!', 'cloud');
+      updateCloudSyncStatus('saved');
     }
   });
 

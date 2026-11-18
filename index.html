@@ -59,12 +59,25 @@
       <header class="app-header">
         <div class="header-top-row">
           <div class="brand-badge">
-            <div class="brand-icon-wrapper">
-              <i data-lucide="shopping-bag" style="width: 18px; height: 18px;"></i>
+            <div class="brand-icon-wrapper" title="Smart Grocery">
+              <i data-lucide="shopping-cart" style="width: 17px; height: 17px;"></i>
             </div>
             <div class="brand-text">
-              <h1>Smart Grocery</h1>
-              <span class="sub-tag">Tracker Belanja Rantau</span>
+              <div class="brand-title-row">
+                <h1>Smart Grocery</h1>
+                <!-- Requirement 3: Google Docs-style Cloud Saved status indicator -->
+                <div class="cloud-sync-status saved" id="cloud-sync-status" title="Semua perubahan tersimpan otomatis ke cloud">
+                  <i data-lucide="cloud-check" id="cloud-sync-icon" style="width: 12px; height: 12px;"></i>
+                  <span class="cloud-sync-text" id="cloud-sync-text">Tersimpan</span>
+                </div>
+                <!-- Requirement 3: Day & Date badge -->
+                <span class="header-date-badge" id="header-date-badge">Rabu, 18 Nov</span>
+              </div>
+              <!-- Requirement 3: Selected store name underneath Smart Grocery (replacing motto) -->
+              <div class="header-store-sub" id="header-store-sub" title="Klik untuk ganti toko supermarket">
+                <i data-lucide="store" style="width: 10px; height: 10px;"></i>
+                <span id="header-active-store-name">Superindo Kaliurang</span>
+              </div>
             </div>
           </div>
           
@@ -79,10 +92,7 @@
               <i data-lucide="palette" id="icon-theme" style="width: 16px; height: 16px;"></i>
             </button>
 
-            <!-- Quick Budget Limit Edit Button -->
-            <button class="icon-btn" id="btn-open-budget-modal" title="Atur Batas Anggaran">
-              <i data-lucide="wallet" style="width: 16px; height: 16px;"></i>
-            </button>
+            <!-- Requirement 2: Dompet button removed from right side -->
 
             <!-- User Profile & Auth Trigger -->
             <button class="user-avatar-btn" id="btn-open-profile-modal" title="Profil Akun & Sinkronisasi">
@@ -152,36 +162,31 @@
             <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
           </div>
         </div>
+
+        <!-- Requirement 1: Slim Progress Bar shown when scrolled/compressed -->
+        <div class="header-compressed-progress" id="header-compressed-progress" title="Progress Penggunaan Anggaran">
+          <div class="compressed-progress-fill fill-safe" id="compressed-meter-fill"></div>
+        </div>
       </header>
 
       <!-- Scrollable Main Content Area -->
       <div class="content-scroll-container" id="content-scroll-container">
         
         <!-- =================================================================
-             TAB 1: BELANJA (TROLI SUPERMARKET)
+             TAB 1: BELANJA (KATALOG & REKOMENDASI BELANJA)
              ================================================================= -->
         <section class="tab-screen active" id="tab-screen-belanja">
 
-          <!-- Checkout & Action Bar (Moved to Top directly below Shop Options Bar) -->
-          <div class="checkout-bar-container top-checkout-bar" id="trolley-checkout-bar">
-            <div class="checkout-stats-row">
-              <span class="checkout-total-title">Total Belanja Saat Ini:</span>
-              <span class="checkout-total-val" id="checkout-total-display">Rp 0</span>
+          <!-- Quick Jump to Cart Banner -->
+          <div class="quick-cart-jump-banner" id="banner-jump-cart">
+            <div class="qcjb-left">
+              <i data-lucide="shopping-cart" style="width: 16px; height: 16px;"></i>
+              <span id="jump-cart-text">0 barang dalam keranjang troli</span>
             </div>
-            <button class="btn-primary-checkout" id="btn-checkout-session">
-              <i data-lucide="check-circle" style="width: 18px; height: 18px;"></i>
-              <span>Selesaikan & Simpan Belanja</span>
+            <button type="button" class="btn-jump-cart" id="btn-jump-to-cart">
+              <span>Buka Keranjang</span>
+              <i data-lucide="arrow-right" style="width: 13px; height: 13px;"></i>
             </button>
-            <div style="display: flex; gap: 8px; justify-content: center; margin-top: 4px;">
-              <button class="btn-secondary-flat" id="btn-clear-cart">
-                <i data-lucide="trash-2" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
-                <span>Kosongkan Troli</span>
-              </button>
-              <button class="btn-secondary-flat" id="btn-load-sample">
-                <i data-lucide="refresh-cw" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
-                <span>Muat Simulasi Rian</span>
-              </button>
-            </div>
           </div>
           
           <!-- Category Quick Filter Chips -->
@@ -212,6 +217,47 @@
             </div>
           </div>
 
+          <!-- Quick Grocery Catalog Shelf (Fast 1-Tap Add to Cart) -->
+          <div class="catalog-shelf-section">
+            <div class="catalog-shelf-header">
+              <div class="catalog-shelf-title">
+                <i data-lucide="package-search" style="width: 16px; height: 16px; color: var(--color-brand);"></i>
+                <span>Katalog Produk Supermarket</span>
+              </div>
+              <span style="font-size: 11px; color: var(--text-muted);">1-Tap Masuk Keranjang</span>
+            </div>
+            <div class="catalog-shelf-grid" id="catalog-shelf-grid">
+              <!-- Dynamically populated by app.js -->
+            </div>
+          </div>
+
+        </section>
+
+        <!-- =================================================================
+             TAB 2: KERANJANG ("Untuk liat apa saja yang udah dimasukkan" - Req 5)
+             ================================================================= -->
+        <section class="tab-screen" id="tab-screen-keranjang">
+          
+          <div class="keranjang-header-bar">
+            <div class="keranjang-title-group">
+              <i data-lucide="shopping-cart" style="width: 18px; height: 18px; color: var(--color-brand);"></i>
+              <h2 class="section-title">Keranjang Belanja Troli</h2>
+              <span class="keranjang-badge" id="keranjang-items-count">0 barang</span>
+            </div>
+            <span class="checkout-total-val" id="keranjang-total-display" style="font-size: 15px;">Rp 0</span>
+          </div>
+
+          <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 12px;">
+            <button class="btn-secondary-flat" id="btn-clear-cart">
+              <i data-lucide="trash-2" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
+              <span>Kosongkan Keranjang</span>
+            </button>
+            <button class="btn-secondary-flat" id="btn-load-sample">
+              <i data-lucide="refresh-cw" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
+              <span>Muat Simulasi Rian</span>
+            </button>
+          </div>
+
           <!-- Trolley Quick Stats Summary -->
           <div class="trolley-quick-summary">
             <div class="trolley-count-tag">
@@ -228,6 +274,13 @@
           <div class="cart-items-list" id="cart-items-container">
             <!-- Dynamically populated by app.js -->
           </div>
+
+          <!-- Quick Navigate to Konklusi Button -->
+          <button type="button" class="btn-primary-checkout" id="btn-keranjang-to-konklusi" style="margin-top: 14px; height: 46px;">
+            <i data-lucide="clipboard-check" style="width: 18px; height: 18px;"></i>
+            <span>Lihat Konklusi & Selesaikan Belanja</span>
+            <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+          </button>
 
         </section>
 
@@ -351,36 +404,149 @@
 
         </section>
 
+        <!-- =================================================================
+             TAB 5: KONKLUSI BELANJA (Requirement 6 - Ringkasan Selesai Belanja)
+             ================================================================= -->
+        <section class="tab-screen" id="tab-screen-konklusi">
+          
+          <!-- Hero Konklusi Card -->
+          <div class="konklusi-hero-card">
+            <div class="konklusi-hero-top">
+              <div class="konklusi-store-info">
+                <div class="konklusi-badge-tag">
+                  <i data-lucide="shopping-bag" style="width: 12px; height: 12px;"></i>
+                  <span>Ringkasan Sesi Belanja</span>
+                </div>
+                <h2 class="konklusi-store-title" id="konklusi-store-title">Superindo Kaliurang</h2>
+                <div class="konklusi-date-sub" id="konklusi-date-sub">Rabu, 18 Nov 2026</div>
+              </div>
+              <div class="safety-badge badge-safe" id="konklusi-status-badge">
+                <span class="status-dot">●</span>
+                <span id="konklusi-status-text">Aman</span>
+              </div>
+            </div>
+
+            <!-- Main Financial Breakdown Grid -->
+            <div class="konklusi-stats-grid">
+              <div class="konklusi-stat-box highlight">
+                <span class="ksb-label">Total Belanja Saat Ini</span>
+                <span class="ksb-val spent" id="konklusi-total-spent">Rp 0</span>
+              </div>
+              <div class="konklusi-stat-box">
+                <span class="ksb-label">Batas Dompet</span>
+                <span class="ksb-val" id="konklusi-budget-limit">Rp 750.000</span>
+              </div>
+              <div class="konklusi-stat-box">
+                <span class="ksb-label">Sisa Uang Dingin</span>
+                <span class="ksb-val remaining" id="konklusi-remaining">Rp 750.000</span>
+              </div>
+              <div class="konklusi-stat-box">
+                <span class="ksb-label">Total Hemat Diskon</span>
+                <span class="ksb-val savings" id="konklusi-savings">Rp 0</span>
+              </div>
+            </div>
+
+            <!-- Budget Progress Meter -->
+            <div class="konklusi-meter-section">
+              <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                <span style="color: var(--text-secondary); font-weight: 600;">Rasio Anggaran Terpakai</span>
+                <span style="font-weight: 800; color: var(--text-primary);" id="konklusi-percent-text">0%</span>
+              </div>
+              <div class="safety-meter-wrapper" style="height: 8px;">
+                <div class="safety-meter-fill fill-safe" id="konklusi-meter-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Items Breakdown / Mini Struk Preview -->
+          <div class="budget-card-section" style="margin-top: 12px;">
+            <div class="section-title-row">
+              <i data-lucide="receipt" style="width: 17px; height: 17px; color: var(--color-brand);"></i>
+              <h3 class="section-title">Rincian Barang di Keranjang (<span id="konklusi-items-count">0 barang</span>)</h3>
+            </div>
+            <div class="konklusi-items-table" id="konklusi-items-table">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Category Spending Allocation -->
+          <div class="budget-card-section">
+            <div class="section-title-row">
+              <i data-lucide="pie-chart" style="width: 17px; height: 17px; color: #60a5fa;"></i>
+              <h3 class="section-title">Alokasi Belanja per Kategori</h3>
+            </div>
+            <div class="category-breakdown-list" id="konklusi-category-breakdown">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Smart Grocery Advice -->
+          <div class="student-tip-box" id="konklusi-advice-box">
+            <div class="student-tip-header">
+              <i data-lucide="sparkles" style="width: 15px; height: 15px; color: #10b981;"></i>
+              <span id="konklusi-advice-title">Evaluasi Belanja Anak Rantau</span>
+            </div>
+            <p class="student-tip-desc" id="konklusi-advice-text">
+              Total belanja Anda masih dalam batas aman dompet. Sisa uang dingin terlindungi untuk keperluan mendadak.
+            </p>
+          </div>
+
+          <!-- Main Actions -->
+          <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
+            <button type="button" class="btn-primary-checkout" id="btn-konklusi-checkout" style="height: 48px; font-size: 14px;">
+              <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+              <span>Selesaikan & Simpan Belanja</span>
+            </button>
+
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn-secondary-flat" id="btn-konklusi-share" style="flex: 1; justify-content: center; height: 42px; border: 1px solid var(--border-medium);">
+                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                <span>Salin Struk Belanja</span>
+              </button>
+              <button type="button" class="btn-secondary-flat" id="btn-konklusi-edit-budget" style="flex: 1; justify-content: center; height: 42px; border: 1px solid var(--border-medium);">
+                <i data-lucide="sliders" style="width: 14px; height: 14px;"></i>
+                <span>Atur Batas Anggaran</span>
+              </button>
+            </div>
+          </div>
+
+        </section>
+
       </div>
 
       <!-- =================================================================
-           FLOATING BOTTOM NAVIGATION BAR (Ergonomic & Centered Plus Button)
+           FLOATING BOTTOM NAVIGATION BAR (Ergonomic & Centered Plus Button - Req 5 & 6)
+           [Belanja] [Keranjang] (+) [Riwayat] [Konklusi]
            ================================================================= -->
       <nav class="bottom-nav-bar" id="bottom-nav-bar" aria-label="Navigasi Utama">
+        <!-- 1. Belanja (Catalog & Smart Suggestions) -->
         <button class="nav-tab-btn active" data-tab="belanja" id="nav-tab-belanja">
-          <i data-lucide="shopping-cart" class="nav-icon" style="width: 20px; height: 20px;"></i>
+          <i data-lucide="compass" class="nav-icon" style="width: 20px; height: 20px;"></i>
           <span>Belanja</span>
+        </button>
+
+        <!-- 2. Keranjang ("Untuk liat apa saja yang udah dimasukkan" - Req 5) -->
+        <button class="nav-tab-btn" data-tab="keranjang" id="nav-tab-keranjang">
+          <i data-lucide="shopping-cart" class="nav-icon" style="width: 20px; height: 20px;"></i>
+          <span>Keranjang</span>
           <span class="cart-nav-badge" id="nav-badge-cart-count">0</span>
         </button>
 
+        <!-- 3. Floating Ergonomic Center Add Button (Dual-Option: Manual / Barcode) -->
+        <button class="nav-fab-btn" id="btn-floating-add-item" title="Tambah Barang ke Troli">
+          <i data-lucide="plus" style="width: 26px; height: 26px; stroke-width: 2.5;"></i>
+        </button>
+
+        <!-- 4. Riwayat (Pindah ke sebelah kanan plus - Req 5) -->
         <button class="nav-tab-btn" data-tab="riwayat" id="nav-tab-riwayat">
           <i data-lucide="history" class="nav-icon" style="width: 20px; height: 20px;"></i>
           <span>Riwayat</span>
         </button>
 
-        <!-- Floating Ergonomic Center Add Button (Dual-Option: Manual / Barcode) -->
-        <button class="nav-fab-btn" id="btn-floating-add-item" title="Tambah Barang ke Troli">
-          <i data-lucide="plus" style="width: 26px; height: 26px; stroke-width: 2.5;"></i>
-        </button>
-
-        <button class="nav-tab-btn" data-tab="anggaran" id="nav-tab-anggaran">
-          <i data-lucide="pie-chart" class="nav-icon" style="width: 20px; height: 20px;"></i>
-          <span>Anggaran</span>
-        </button>
-
-        <button class="nav-tab-btn" id="btn-nav-profil" title="Profil & Pengaturan">
-          <i data-lucide="user" class="nav-icon" style="width: 20px; height: 20px;"></i>
-          <span>Profil</span>
+        <!-- 5. Konklusi Belanja (Paling kanan ada konklusi - Req 6) -->
+        <button class="nav-tab-btn" data-tab="konklusi" id="nav-tab-konklusi">
+          <i data-lucide="clipboard-check" class="nav-icon" style="width: 20px; height: 20px;"></i>
+          <span>Konklusi</span>
         </button>
       </nav>
 
