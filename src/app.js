@@ -117,7 +117,7 @@ function escapeHtml(str) {
 }
 
 /**
- * Display toast notification
+ * Display swipable toast notification (Swipable to dismiss immediately)
  */
 function showToast(message, icon = 'info') {
   const container = document.getElementById('toast-container');
@@ -125,16 +125,128 @@ function showToast(message, icon = 'info') {
 
   const toast = document.createElement('div');
   toast.className = 'toast-message';
-  toast.innerHTML = `<i data-lucide="${icon}" style="width: 14px; height: 14px;"></i><span>${message}</span>`;
+  toast.innerHTML = `
+    <i data-lucide="${icon}" style="width: 14px; height: 14px; flex-shrink: 0;"></i>
+    <span class="toast-text">${message}</span>
+    <button type="button" class="toast-dismiss-btn" aria-label="Tutup notifikasi">
+      <i data-lucide="x" style="width: 11px; height: 11px;"></i>
+    </button>
+  `;
   container.appendChild(toast);
   refreshIcons();
 
-  setTimeout(() => {
+  let startX = 0;
+  let currentX = 0;
+  let isDragging = false;
+  let dismissTimer = null;
+
+  const startDismissTimer = () => {
+    dismissTimer = setTimeout(() => {
+      dismissToast('up');
+    }, 2800);
+  };
+
+  const clearDismissTimer = () => {
+    if (dismissTimer) clearTimeout(dismissTimer);
+  };
+
+  const dismissToast = (direction = 'right') => {
+    clearDismissTimer();
+    toast.style.transition = 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)';
+    if (direction === 'left') {
+      toast.style.transform = 'translateX(-120%) scale(0.9)';
+    } else if (direction === 'right') {
+      toast.style.transform = 'translateX(120%) scale(0.9)';
+    } else {
+      toast.style.transform = 'translateY(-14px) scale(0.9)';
+    }
     toast.style.opacity = '0';
-    toast.style.transform = 'translateY(-10px)';
-    toast.style.transition = 'all 0.3s ease';
-    setTimeout(() => toast.remove(), 300);
-  }, 2800);
+    setTimeout(() => {
+      toast.remove();
+    }, 250);
+  };
+
+  // Close button click
+  const closeBtn = toast.querySelector('.toast-dismiss-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dismissToast('up');
+    });
+  }
+
+  // Touch Swipe Handlers (Requirement: swipable if user is annoyed)
+  toast.addEventListener('touchstart', (e) => {
+    clearDismissTimer();
+    startX = e.touches[0].clientX;
+    currentX = startX;
+    isDragging = true;
+    toast.style.transition = 'none';
+  }, { passive: true });
+
+  toast.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    currentX = e.touches[0].clientX;
+    const deltaX = currentX - startX;
+    toast.style.transform = `translateX(${deltaX}px) rotate(${deltaX * 0.04}deg)`;
+    toast.style.opacity = `${Math.max(0.15, 1 - Math.abs(deltaX) / 180)}`;
+  }, { passive: true });
+
+  toast.addEventListener('touchend', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    const deltaX = currentX - startX;
+    if (Math.abs(deltaX) > 45) {
+      dismissToast(deltaX > 0 ? 'right' : 'left');
+    } else {
+      toast.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+      toast.style.transform = 'translateX(0) rotate(0deg)';
+      toast.style.opacity = '1';
+      startDismissTimer();
+    }
+  });
+
+  // Mouse Drag Handlers (for desktop browser preview)
+  toast.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.toast-dismiss-btn')) return;
+    clearDismissTimer();
+    startX = e.clientX;
+    currentX = startX;
+    isDragging = true;
+    toast.style.transition = 'none';
+    toast.style.cursor = 'grabbing';
+
+    const onMouseMove = (moveEvent) => {
+      if (!isDragging) return;
+      currentX = moveEvent.clientX;
+      const deltaX = currentX - startX;
+      toast.style.transform = `translateX(${deltaX}px) rotate(${deltaX * 0.04}deg)`;
+      toast.style.opacity = `${Math.max(0.15, 1 - Math.abs(deltaX) / 180)}`;
+    };
+
+    const onMouseUp = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      toast.style.cursor = 'grab';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+
+      const deltaX = currentX - startX;
+      if (Math.abs(deltaX) > 45) {
+        dismissToast(deltaX > 0 ? 'right' : 'left');
+      } else {
+        toast.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+        toast.style.transform = 'translateX(0) rotate(0deg)';
+        toast.style.opacity = '1';
+        startDismissTimer();
+      }
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  });
+
+  startDismissTimer();
 }
 
 /**
@@ -246,13 +358,13 @@ function renderSafetyCap() {
     checkoutTotal.textContent = formatRupiah(summary.totalSpent);
   }
   if (keranjangCount) {
-    keranjangCount.textContent = `${summary.totalCount} barang`;
+    keranjangCount.textContent = `${summary.totalItemsCount || summary.totalCount || 0} barang`;
   }
   if (keranjangTotal) {
     keranjangTotal.textContent = formatRupiah(summary.totalSpent);
   }
   if (jumpText) {
-    jumpText.textContent = `${summary.totalCount} barang dalam keranjang troli (${formatRupiah(summary.totalSpent)})`;
+    jumpText.textContent = `${summary.totalItemsCount || summary.totalCount || 0} barang dalam keranjang troli (${formatRupiah(summary.totalSpent)})`;
   }
 
   // Update Shop Options Sheet if open
@@ -578,15 +690,21 @@ function renderHistoryScreen() {
       year: 'numeric'
     });
 
-    const previewItems = (session.items || []).slice(0, 3).map(i => `${i.name} (${i.qty} ${i.unit || 'pcs'})`).join(', ');
-    const moreCount = (session.items || []).length > 3 ? ` +${session.items.length - 3} barang lainnya` : '';
+    let displayTitle = (session.title || 'Sesi Belanja').trim();
+    // Clean up any "- Bulan [Tahun]" or "– Bulan [Tahun]" suffix so price stays in same position
+    displayTitle = displayTitle.replace(/\s*[-–—]\s*(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)(\s*\d{4})?/gi, '').trim();
+    if (!displayTitle) displayTitle = session.title || 'Sesi Belanja';
+
+    const itemsArr = session.items || [];
+    const previewItems = itemsArr.slice(0, 3).map(i => `${i.name} (${i.qty} ${i.unit || 'pcs'})`).join(', ');
+    const moreCount = itemsArr.length > 3 ? ` +${itemsArr.length - 3} barang lainnya` : '';
 
     html += `
       <article class="history-session-card" data-session-id="${session.id}">
         <div class="history-session-header">
-          <div>
-            <h4 class="session-title">${session.title}</h4>
-            <div class="session-date">${dateFormatted} • ${session.itemsCount || session.items.length} Barang</div>
+          <div class="session-info-left">
+            <h4 class="session-title" title="${escapeHtml(displayTitle)}">${escapeHtml(displayTitle)}</h4>
+            <div class="session-date">${dateFormatted} • ${session.itemsCount || itemsArr.length} Barang</div>
           </div>
           <div class="session-badge-spent">
             <div class="spent-val">${formatRupiah(session.totalSpent)}</div>
@@ -1242,6 +1360,44 @@ function closeReceiptModal() {
 }
 
 /* ==========================================================================
+   Clear Cart Confirmation Modal Controls
+   ========================================================================== */
+function openClearCartModal() {
+  if (state.cart.length === 0) {
+    showToast('Keranjang troli sudah kosong!', 'shopping-cart');
+    return;
+  }
+  playWarning();
+  const backdrop = document.getElementById('modal-clear-cart-backdrop');
+  if (backdrop) {
+    backdrop.classList.add('active');
+    backdrop.setAttribute('aria-hidden', 'false');
+    refreshIcons();
+  }
+}
+
+function closeClearCartModal() {
+  playTap();
+  const backdrop = document.getElementById('modal-clear-cart-backdrop');
+  if (backdrop) {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function handleConfirmClearCart() {
+  playTap();
+  state.cart = [];
+  DB.saveCartItems([]);
+  renderCartItems();
+  renderSafetyCap();
+  renderAnggaranScreen();
+  renderKonklusiScreen();
+  closeClearCartModal();
+  showToast('Keranjang troli berhasil dikosongkan.', 'trash-2');
+}
+
+/* ==========================================================================
    Checkout Cart Flow (F-06 Selesaikan & Simpan Belanja)
    ========================================================================== */
 function handleCheckoutSession() {
@@ -1274,7 +1430,7 @@ function handleCheckoutSession() {
   const monthLabel = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
 
   const savedSession = DB.checkoutCartSession({
-    title: `Belanja di ${activeStore} - ${monthLabel}`,
+    title: `Belanja di ${activeStore}`,
     budgetLimit: state.budget,
     items: state.cart,
     summary
@@ -1422,21 +1578,20 @@ function renderHeaderDate() {
 function updateCloudSyncStatus(status = 'saved') {
   const container = document.getElementById('cloud-sync-status');
   const icon = document.getElementById('cloud-sync-icon');
-  const text = document.getElementById('cloud-sync-text');
   if (!container || !icon) return;
 
   if (status === 'saving') {
-    container.className = 'cloud-sync-status saving';
+    container.className = 'icon-btn cloud-sync-btn saving';
     icon.setAttribute('data-lucide', 'refresh-cw');
-    if (text) text.textContent = 'Menyimpan...';
+    container.setAttribute('title', 'Sedang menyimpan ke cloud...');
   } else if (status === 'saved') {
-    container.className = 'cloud-sync-status saved';
+    container.className = 'icon-btn cloud-sync-btn saved';
     icon.setAttribute('data-lucide', 'cloud-check');
-    if (text) text.textContent = 'Tersimpan';
+    container.setAttribute('title', 'Semua perubahan tersimpan otomatis di cloud');
   } else if (status === 'offline') {
-    container.className = 'cloud-sync-status offline';
+    container.className = 'icon-btn cloud-sync-btn offline';
     icon.setAttribute('data-lucide', 'cloud-off');
-    if (text) text.textContent = 'Lokal';
+    container.setAttribute('title', 'Bekerja secara offline (tersimpan lokal)');
   }
   refreshIcons();
 }
@@ -1463,7 +1618,7 @@ function renderBelanjaScreen() {
   const jumpText = document.getElementById('jump-cart-text');
   if (jumpText) {
     const summary = calculateCartSummary(state.cart, state.budget);
-    jumpText.textContent = `${summary.totalCount} barang dalam keranjang troli (${formatRupiah(summary.totalSpent)})`;
+    jumpText.textContent = `${summary.totalItemsCount || summary.totalCount || 0} barang dalam keranjang troli (${formatRupiah(summary.totalSpent)})`;
   }
 
   const catalogContainer = document.getElementById('catalog-shelf-grid');
@@ -2273,8 +2428,9 @@ function setupEventListeners() {
 
   document.getElementById('btn-force-cloud-sync').addEventListener('click', () => {
     playTap();
+    updateCloudSyncStatus('saving');
     DB.triggerCloudSync();
-    showToast('Data disinkronkan ke Cloud Firestore!', 'cloud');
+    setTimeout(() => updateCloudSyncStatus('saved'), 600);
   });
 
   document.getElementById('btn-trigger-switch-account').addEventListener('click', () => {
@@ -2719,21 +2875,28 @@ function setupEventListeners() {
   if (shopOptionsCart) shopOptionsCart.addEventListener('click', handleItemDelegation);
 
   // Checkout Session Button (F-06)
-  document.getElementById('btn-checkout-session').addEventListener('click', handleCheckoutSession);
+  const checkoutBtn = document.getElementById('btn-checkout-session');
+  if (checkoutBtn) checkoutBtn.addEventListener('click', handleCheckoutSession);
 
-  // Clear Trolley Button
-  document.getElementById('btn-clear-cart').addEventListener('click', () => {
-    if (state.cart.length === 0) return;
-    if (confirm('Kosongkan semua barang dari troli belanja?')) {
-      playTap();
-      state.cart = [];
-      DB.saveCartItems([]);
-      renderCartItems();
-      renderSafetyCap();
-      renderAnggaranScreen();
-      showToast('Troli telah dikosongkan', 'trash');
-    }
-  });
+  // Clear Trolley Button & Confirmation Modal
+  const btnClearCart = document.getElementById('btn-clear-cart');
+  if (btnClearCart) btnClearCart.addEventListener('click', openClearCartModal);
+
+  const btnCloseClearCart = document.getElementById('btn-close-clear-cart-modal');
+  if (btnCloseClearCart) btnCloseClearCart.addEventListener('click', closeClearCartModal);
+
+  const btnCancelClearCart = document.getElementById('btn-cancel-clear-cart');
+  if (btnCancelClearCart) btnCancelClearCart.addEventListener('click', closeClearCartModal);
+
+  const btnConfirmClearCart = document.getElementById('btn-confirm-clear-cart');
+  if (btnConfirmClearCart) btnConfirmClearCart.addEventListener('click', handleConfirmClearCart);
+
+  const clearCartBackdrop = document.getElementById('modal-clear-cart-backdrop');
+  if (clearCartBackdrop) {
+    clearCartBackdrop.addEventListener('click', (e) => {
+      if (e.target.id === 'modal-clear-cart-backdrop') closeClearCartModal();
+    });
+  }
 
   // Reset Sample data button for students (Rian Simulation: Juli, Ags, Des)
   const handleReloadSimulation = () => {

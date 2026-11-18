@@ -190,6 +190,7 @@ export function calculateCartSummary(items = [], budgetLimit = 0) {
     totalSubtotal,
     totalSavings,
     totalItemsCount,
+    totalCount: totalItemsCount,
     checkedItemsCount,
     totalLines: items.length,
     budget,

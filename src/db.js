@@ -45,7 +45,7 @@ const DEFAULT_PREVIOUS_MONTH_DATA = [
 const DEFAULT_HISTORY_SESSIONS = [
   {
     id: 'session-dec-2026',
-    title: 'Belanja Persiapan Akhir Tahun - Desember 2026',
+    title: 'Belanja Persiapan Akhir Tahun',
     date: '2026-12-08T15:30:00Z',
     monthLabel: 'Desember 2026',
     budgetLimit: 800000,
@@ -73,7 +73,7 @@ const DEFAULT_HISTORY_SESSIONS = [
   },
   {
     id: 'session-aug-2026',
-    title: 'Belanja Awal Semester - Agustus 2026',
+    title: 'Belanja Awal Semester',
     date: '2026-08-08T11:15:00Z',
     monthLabel: 'Agustus 2026',
     budgetLimit: 800000,
@@ -101,7 +101,7 @@ const DEFAULT_HISTORY_SESSIONS = [
   },
   {
     id: 'session-jul-2026',
-    title: 'Belanja Awal Masuk Kos - Juli 2026',
+    title: 'Belanja Awal Masuk Kos',
     date: '2026-07-06T10:30:00Z',
     monthLabel: 'Juli 2026',
     budgetLimit: 750000,
@@ -320,7 +320,7 @@ export const DB = {
 
     const newSession = {
       id: 'session-' + Date.now(),
-      title: title || `Belanja ${monthLabel}`,
+      title: title || 'Sesi Belanja',
       date: now.toISOString(),
       monthLabel,
       budgetLimit,

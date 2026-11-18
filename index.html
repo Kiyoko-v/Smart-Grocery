@@ -60,20 +60,15 @@
         <div class="header-top-row">
           <div class="brand-badge">
             <div class="brand-icon-wrapper" title="Smart Grocery">
-              <i data-lucide="shopping-cart" style="width: 17px; height: 17px;"></i>
+              <i data-lucide="shopping-bag" style="width: 18px; height: 18px;"></i>
             </div>
             <div class="brand-text">
               <div class="brand-title-row">
                 <h1>Smart Grocery</h1>
-                <!-- Requirement 3: Google Docs-style Cloud Saved status indicator -->
-                <div class="cloud-sync-status saved" id="cloud-sync-status" title="Semua perubahan tersimpan otomatis ke cloud">
-                  <i data-lucide="cloud-check" id="cloud-sync-icon" style="width: 12px; height: 12px;"></i>
-                  <span class="cloud-sync-text" id="cloud-sync-text">Tersimpan</span>
-                </div>
-                <!-- Requirement 3: Day & Date badge -->
+                <!-- Requirement: Day & Date badge with plenty of horizontal room -->
                 <span class="header-date-badge" id="header-date-badge">Rabu, 18 Nov</span>
               </div>
-              <!-- Requirement 3: Selected store name underneath Smart Grocery (replacing motto) -->
+              <!-- Requirement: Selected store name underneath Smart Grocery -->
               <div class="header-store-sub" id="header-store-sub" title="Klik untuk ganti toko supermarket">
                 <i data-lucide="store" style="width: 10px; height: 10px;"></i>
                 <span id="header-active-store-name">Superindo Kaliurang</span>
@@ -82,6 +77,11 @@
           </div>
           
           <div class="header-actions">
+            <!-- Requirement: Cloud sync symbol ONLY (no text), placed at the leftmost position in the right side section -->
+            <div class="icon-btn cloud-sync-btn saved" id="cloud-sync-status" title="Data tersinkron otomatis ke cloud">
+              <i data-lucide="cloud-check" id="cloud-sync-icon" style="width: 16px; height: 16px;"></i>
+            </div>
+
             <!-- Sound toggle button -->
             <button class="icon-btn" id="btn-toggle-sound" title="Efek Suara">
               <i data-lucide="volume-2" id="icon-sound" style="width: 16px; height: 16px;"></i>
@@ -91,8 +91,6 @@
             <button class="icon-btn" id="btn-toggle-theme" title="Ganti Tema Warna">
               <i data-lucide="palette" id="icon-theme" style="width: 16px; height: 16px;"></i>
             </button>
-
-            <!-- Requirement 2: Dompet button removed from right side -->
 
             <!-- User Profile & Auth Trigger -->
             <button class="user-avatar-btn" id="btn-open-profile-modal" title="Profil Akun & Sinkronisasi">
@@ -247,14 +245,15 @@
             <span class="checkout-total-val" id="keranjang-total-display" style="font-size: 15px;">Rp 0</span>
           </div>
 
-          <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 12px;">
-            <button class="btn-secondary-flat" id="btn-clear-cart">
-              <i data-lucide="trash-2" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
-              <span>Kosongkan Keranjang</span>
+          <!-- Top Cart Action Buttons (Left: Delete All / Kosongkan, Right: Checkout Belanja) -->
+          <div class="cart-top-actions-row">
+            <button type="button" class="btn-clear-cart-danger" id="btn-clear-cart" title="Kosongkan Semua Isi Keranjang">
+              <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i>
+              <span>Kosongkan</span>
             </button>
-            <button class="btn-secondary-flat" id="btn-load-sample">
-              <i data-lucide="refresh-cw" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
-              <span>Muat Simulasi Rian</span>
+            <button type="button" class="btn-primary-checkout btn-cart-top-checkout" id="btn-checkout-session">
+              <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
+              <span>Checkout Belanja</span>
             </button>
           </div>
 
@@ -958,6 +957,41 @@
             </p>
             <div class="shop-options-cart-list" id="remove-item-cart-list">
               <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- =================================================================
+           MODAL: KONFIRMASI KOSONGKAN KERANJANG
+           Pop-up dialog konfirmasi sebelum menghapus semua barang di troli
+           ================================================================= -->
+      <aside class="modal-backdrop" id="modal-clear-cart-backdrop" aria-hidden="true">
+        <div class="bottom-sheet" style="max-height: 48vh;">
+          <div class="sheet-handle-bar"></div>
+          <div class="sheet-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); display: flex; align-items: center; justify-content: center; color: #ef4444;">
+                <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
+              </div>
+              <h3 style="margin: 0; font-size: 15px; font-weight: 800;">Kosongkan Keranjang?</h3>
+            </div>
+            <button class="sheet-close-btn" id="btn-close-clear-cart-modal" aria-label="Tutup">
+              <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+          <div class="sheet-body" style="padding-top: 14px;">
+            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 18px;">
+              Semua barang yang telah Anda masukkan ke dalam troli belanja akan dihapus sekaligus. Apakah Anda yakin ingin mengosongkan keranjang ini?
+            </p>
+            <div style="display: flex; gap: 10px;">
+              <button type="button" class="btn-secondary-flat" id="btn-cancel-clear-cart" style="flex: 1; height: 44px; font-size: 13px; font-weight: 700; justify-content: center; border-radius: var(--radius-sm);">
+                Batal
+              </button>
+              <button type="button" class="btn-primary-checkout" id="btn-confirm-clear-cart" style="flex: 1; height: 44px; font-size: 13px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);">
+                <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i>
+                <span>Ya, Kosongkan</span>
+              </button>
             </div>
           </div>
         </div>

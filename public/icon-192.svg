@@ -1,34 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="192" height="192">
   <defs>
-    <filter id="neonGlow192" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="16" result="blur1" />
-      <feGaussianBlur stdDeviation="32" result="blur2" />
-      <feMerge>
-        <feMergeNode in="blur2" />
-        <feMergeNode in="blur1" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
+    <filter id="cartShadow192" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#000000" flood-opacity="0.32" />
     </filter>
-    <radialGradient id="bgGlow192" cx="50%" cy="50%" r="55%">
-      <stop offset="0%" stop-color="#141E38" />
-      <stop offset="70%" stop-color="#0B101E" />
-      <stop offset="100%" stop-color="#060A14" />
-    </radialGradient>
   </defs>
 
-  <rect width="512" height="512" rx="116" fill="url(#bgGlow192)" stroke="#1E2A4A" stroke-width="8" />
-
-  <circle cx="256" cy="256" r="130" fill="#3B82F6" opacity="0.18" />
-
-  <g filter="url(#neonGlow192)">
-    <!-- Outer brighter glowing stroke layer -->
-    <path d="M104 132h56l32 160h192l24-120H168" fill="none" stroke="#4F70ED" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />
-    <circle cx="216" cy="352" r="28" fill="#4F70ED" opacity="0.85" />
-    <circle cx="360" cy="352" r="28" fill="#4F70ED" opacity="0.85" />
-
-    <!-- Core symbol in requested #25367D color -->
-    <path d="M104 132h56l32 160h192l24-120H168" fill="none" stroke="#25367D" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" />
-    <circle cx="216" cy="352" r="22" fill="#25367D" />
-    <circle cx="360" cy="352" r="22" fill="#25367D" />
+  <g filter="url(#cartShadow192)">
+    <path d="M104 132h56l32 160h192l24-120H168" fill="none" stroke="#10B981" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="216" cy="352" r="30" fill="#10B981" />
+    <circle cx="360" cy="352" r="30" fill="#10B981" />
   </g>
 </svg>

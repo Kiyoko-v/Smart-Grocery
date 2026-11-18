@@ -1,38 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <defs>
-    <!-- Brighter luminous glow filter -->
-    <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="2.2" result="blur1" />
-      <feGaussianBlur stdDeviation="4.5" result="blur2" />
-      <feMerge>
-        <feMergeNode in="blur2" />
-        <feMergeNode in="blur1" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
+    <!-- Crisp drop shadow so symbol is clearly visible on both light and dark browser tab backgrounds -->
+    <filter id="cartShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.32" />
     </filter>
-    <radialGradient id="bgGlow" cx="50%" cy="50%" r="55%">
-      <stop offset="0%" stop-color="#141E38" />
-      <stop offset="70%" stop-color="#0B101E" />
-      <stop offset="100%" stop-color="#060A14" />
-    </radialGradient>
   </defs>
 
-  <!-- Dark Rounded App Canvas -->
-  <rect width="64" height="64" rx="15" fill="url(#bgGlow)" stroke="#1E2A4A" stroke-width="1.2" />
-
-  <!-- Soft Radiant Ambient Glow behind symbol -->
-  <circle cx="32" cy="32" r="16" fill="#3B82F6" opacity="0.18" filter="blur(6px)" />
-
-  <!-- Centered Shopping Cart Symbol with #25367d base & brighter glowing effect -->
-  <g filter="url(#neonGlow)">
-    <!-- Outer brighter radiant stroke layer (#4F70ED / #60A5FA) -->
-    <path d="M13 16.5h7l4 20h24l3-15H21" fill="none" stroke="#4F70ED" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />
-    <circle cx="27" cy="44" r="3.5" fill="#4F70ED" opacity="0.85" />
-    <circle cx="45" cy="44" r="3.5" fill="#4F70ED" opacity="0.85" />
-
-    <!-- Core symbol in requested #25367D color -->
-    <path d="M13 16.5h7l4 20h24l3-15H21" fill="none" stroke="#25367D" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" />
-    <circle cx="27" cy="44" r="2.8" fill="#25367D" />
-    <circle cx="45" cy="44" r="2.8" fill="#25367D" />
+  <!-- Transparent background so the icon background seamlessly matches the browser tab background -->
+  <g filter="url(#cartShadow)">
+    <!-- Centered Shopping Cart in vibrant signature brand emerald green -->
+    <path d="M13 16.5h7l4 20h24l3-15H21" fill="none" stroke="#10B981" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="27" cy="44" r="3.8" fill="#10B981" />
+    <circle cx="45" cy="44" r="3.8" fill="#10B981" />
   </g>
 </svg>
