@@ -11,6 +11,7 @@
  */
 
 import './style.css';
+import confetti from 'canvas-confetti';
 import { DB } from './db.js';
 import {
   calculateItemDiscount,
@@ -91,7 +92,8 @@ const state = {
   emailAuthMode: 'login', // 'login' | 'signup'
   phoneTimerInterval: null,
   pendingPhoneTarget: '',
-  isMostBoughtCollapsed: false
+  isMostBoughtCollapsed: false,
+  isCatalogExpanded: false
 };
 
 /**
@@ -578,6 +580,7 @@ function renderMostFrequentlyBought() {
 
     const inCart = state.cart.find(c => c.name.toLowerCase() === item.name.toLowerCase());
     const qty = inCart ? (inCart.qty || 1) : 0;
+    const mbTotalPrice = qty > 1 ? (item.latestPrice * qty) : item.latestPrice;
 
     let actionBtnHtml = '';
     if (inCart && qty > 0) {
@@ -597,6 +600,20 @@ function renderMostFrequentlyBought() {
       `;
     }
 
+    let priceDisplayHtml = '';
+    if (qty > 1) {
+      priceDisplayHtml = `
+        <div style="display: flex; flex-direction: column; line-height: 1.15;">
+          <span class="mb-price">${formatRupiah(mbTotalPrice)}</span>
+          <span style="font-size: 9.5px; color: var(--text-muted); font-weight: normal;">${qty}x @${formatRupiah(item.latestPrice)}</span>
+        </div>
+      `;
+    } else {
+      priceDisplayHtml = `
+        <span class="mb-price">${formatRupiah(item.latestPrice)}<span style="font-size: 10px; color: var(--text-muted); font-weight: normal;">/${item.unit}</span></span>
+      `;
+    }
+
     html += `
       <div class="most-bought-card ${inCart ? 'in-cart' : ''}">
         <div>
@@ -609,7 +626,7 @@ function renderMostFrequentlyBought() {
 
         <div>
           <div class="mb-price-row">
-            <span class="mb-price">${formatRupiah(item.latestPrice)}<span style="font-size: 10px; color: var(--text-muted); font-weight: normal;">/${item.unit}</span></span>
+            ${priceDisplayHtml}
             <span class="comparator-badge ${priceBadgeClass}" data-action="view-trend" data-item-name="${item.name}" data-item-price="${item.latestPrice}" title="Riwayat harga unit">
               ${badgeText}
             </span>
@@ -688,6 +705,9 @@ function executeDirectAddToCart(product) {
   renderCartItems();
   renderSafetyCap();
   renderAnggaranScreen();
+  renderBelanjaScreen();
+  renderMostFrequentlyBought();
+  renderKonklusiScreen();
 }
 
 /* ==========================================================================
@@ -1663,6 +1683,15 @@ function updateThemeUI(themeInfo) {
   });
 }
 
+function toggleThemeDirectly() {
+  playTap();
+  const current = getResolvedTheme(); // 'light' or 'dark'
+  const next = current === 'light' ? 'dark' : 'light';
+  applyTheme(next, true);
+  updateThemeUI();
+  showToast(next === 'light' ? '☀️ Mode Terang (Light Mode) aktif' : '🌙 Mode Gelap (Dark Mode) aktif', 'palette');
+}
+
 function openThemePickerModal() {
   playTap();
   const backdrop = document.getElementById('modal-theme-picker-backdrop');
@@ -1866,14 +1895,21 @@ function renderBelanjaScreen() {
     return item.category === state.activeFilter;
   });
 
+  const expandContainer = document.getElementById('catalog-expand-container');
+
   if (filteredCatalog.length === 0) {
     catalogContainer.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 20px; font-size: 12px; color: var(--text-muted);">Tidak ada katalog di kategori ini. Gunakan tombol (+) untuk menambah barang kustom.</div>`;
+    if (expandContainer) expandContainer.innerHTML = '';
     return;
   }
 
-  catalogContainer.innerHTML = filteredCatalog.map(item => {
+  // User requirement: Belanja grid initially displays only 4 items, with "Tap to look more" to expand
+  const visibleCatalog = state.isCatalogExpanded ? filteredCatalog : filteredCatalog.slice(0, 4);
+
+  catalogContainer.innerHTML = visibleCatalog.map(item => {
     const inCart = state.cart.find(c => c.name.toLowerCase() === item.name.toLowerCase());
     const qty = inCart ? (inCart.qty || 1) : 0;
+    const itemTotalPrice = qty > 1 ? (item.price * qty) : item.price;
 
     let actionBtnHtml = '';
     if (inCart && qty > 0) {
@@ -1893,6 +1929,8 @@ function renderBelanjaScreen() {
       `;
     }
 
+    const priceSubtext = qty > 1 ? `<span class="cic-price-subtext">${qty}x @${formatRupiah(item.price)}</span>` : '';
+
     return `
       <div class="catalog-item-card ${inCart ? 'in-cart' : ''}">
         <div class="cic-top">
@@ -1903,12 +1941,37 @@ function renderBelanjaScreen() {
           </div>
         </div>
         <div class="cic-bottom">
-          <span class="cic-price">${formatRupiah(item.price)}</span>
+          <div class="cic-price-group">
+            <span class="cic-price">${formatRupiah(itemTotalPrice)}</span>
+            ${priceSubtext}
+          </div>
           ${actionBtnHtml}
         </div>
       </div>
     `;
   }).join('');
+
+  if (expandContainer) {
+    if (filteredCatalog.length > 4) {
+      const remainingCount = filteredCatalog.length - 4;
+      expandContainer.innerHTML = `
+        <button type="button" class="btn-catalog-expand" id="btn-toggle-catalog-expand">
+          <span>${state.isCatalogExpanded ? 'Tampilkan Lebih Sedikit' : `Tap to look more (+${remainingCount})`}</span>
+          <i data-lucide="${state.isCatalogExpanded ? 'chevron-up' : 'chevron-down'}" style="width: 15px; height: 15px;"></i>
+        </button>
+      `;
+      const expandBtn = document.getElementById('btn-toggle-catalog-expand');
+      if (expandBtn) {
+        expandBtn.onclick = () => {
+          playTap();
+          state.isCatalogExpanded = !state.isCatalogExpanded;
+          renderBelanjaScreen();
+        };
+      }
+    } else {
+      expandContainer.innerHTML = '';
+    }
+  }
 
   // Handle catalog interactions via delegation
   catalogContainer.onclick = (e) => {
@@ -2162,6 +2225,134 @@ function closeStoreSelectorModal() {
     backdrop.classList.remove('active');
     backdrop.setAttribute('aria-hidden', 'true');
   }
+}
+
+/* ==========================================================================
+   Star Confetti Celebration (Requirement: Auth Signup & Login Pop)
+   - Dark mode: White stars (#ffffff)
+   - Light mode: Yellow stars (#ffd700, #fbbf24, #f59e0b)
+   ========================================================================== */
+function triggerStarConfetti() {
+  const currentTheme = (typeof getResolvedTheme === 'function' ? getResolvedTheme() : document.documentElement.getAttribute('data-theme')) || 'dark';
+  const isLight = currentTheme === 'light' || document.documentElement.getAttribute('data-theme') === 'light';
+
+  // Specific requirement:
+  // Dark mode -> White stars
+  // Light mode -> Yellow stars
+  const starColors = isLight
+    ? ['#ffd700', '#fbbf24', '#f59e0b', '#facc15', '#fde047']
+    : ['#ffffff', '#f8fafc', '#f1f5f9', '#ffffff'];
+
+  // Sound & haptic celebration
+  playCheckout();
+  vibrate([40, 60, 80]);
+
+  const fire = (typeof confetti === 'function') ? confetti : (window.confetti || null);
+
+  if (fire) {
+    // 1. Initial central pop explosion (stars burst 360 degrees outward like confetti)
+    fire({
+      particleCount: 65,
+      angle: 90,
+      spread: 360,
+      startVelocity: 36,
+      decay: 0.92,
+      scalar: 1.45,
+      shapes: ['star'],
+      colors: starColors,
+      origin: { x: 0.5, y: 0.45 },
+      zIndex: 999999
+    });
+
+    // 2. Dual side poppers (cannon burst from left and right)
+    setTimeout(() => {
+      fire({
+        particleCount: 35,
+        angle: 60,
+        spread: 60,
+        startVelocity: 42,
+        decay: 0.91,
+        scalar: 1.25,
+        shapes: ['star'],
+        colors: starColors,
+        origin: { x: 0.12, y: 0.75 },
+        zIndex: 999999
+      });
+      fire({
+        particleCount: 35,
+        angle: 120,
+        spread: 60,
+        startVelocity: 42,
+        decay: 0.91,
+        scalar: 1.25,
+        shapes: ['star'],
+        colors: starColors,
+        origin: { x: 0.88, y: 0.75 },
+        zIndex: 999999
+      });
+    }, 180);
+
+    // 3. Falling twinkling star shower from the top
+    setTimeout(() => {
+      fire({
+        particleCount: 30,
+        angle: 90,
+        spread: 120,
+        startVelocity: 24,
+        decay: 0.93,
+        scalar: 1.5,
+        shapes: ['star'],
+        colors: starColors,
+        origin: { x: 0.5, y: 0.25 },
+        zIndex: 999999
+      });
+    }, 380);
+  } else {
+    triggerDomStarPop(starColors);
+  }
+}
+
+function triggerDomStarPop(colors) {
+  const overlay = document.createElement('div');
+  overlay.className = 'star-confetti-overlay';
+  document.body.appendChild(overlay);
+
+  const starCount = 40;
+  const centerX = window.innerWidth / 2;
+  const centerY = window.innerHeight * 0.45;
+
+  for (let i = 0; i < starCount; i++) {
+    const star = document.createElement('div');
+    star.className = 'dom-star-particle';
+    const color = colors[i % colors.length];
+
+    star.innerHTML = `
+      <svg viewBox="0 0 24 24" width="100%" height="100%" fill="${color}">
+        <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
+      </svg>
+    `;
+
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 80 + Math.random() * 200;
+    const popX = Math.cos(angle) * distance;
+    const popY = Math.sin(angle) * distance;
+    const size = 18 + Math.random() * 16;
+    const delay = Math.random() * 0.18;
+
+    star.style.left = `${centerX}px`;
+    star.style.top = `${centerY}px`;
+    star.style.width = `${size}px`;
+    star.style.height = `${size}px`;
+    star.style.setProperty('--pop-x', `${popX}px`);
+    star.style.setProperty('--pop-y', `${popY}px`);
+    star.style.animationDelay = `${delay}s`;
+
+    overlay.appendChild(star);
+  }
+
+  setTimeout(() => {
+    overlay.remove();
+  }, 2200);
 }
 
 /* ==========================================================================
@@ -2531,15 +2722,15 @@ function setupEventListeners() {
     });
   }
 
-  // Twitter (X) Style Theme Picker Modal Listeners
+  // Direct Theme Toggle (1-Tap Switch between Light & Dark Mode)
   const themeBtn = document.getElementById('btn-toggle-theme');
   if (themeBtn) {
-    themeBtn.addEventListener('click', openThemePickerModal);
+    themeBtn.addEventListener('click', toggleThemeDirectly);
   }
 
   const profileThemeBtn = document.getElementById('btn-profile-change-theme');
   if (profileThemeBtn) {
-    profileThemeBtn.addEventListener('click', openThemePickerModal);
+    profileThemeBtn.addEventListener('click', toggleThemeDirectly);
   }
 
   const closeThemePickerBtn = document.getElementById('btn-close-theme-picker');
@@ -2719,6 +2910,7 @@ function setupEventListeners() {
       closeAuthModal();
       DB.triggerCloudSync();
       showToast(`Selamat datang, ${user.name}!`, 'check-circle');
+      triggerStarConfetti();
     } catch (err) {
       showToast(err.message, 'alert-circle');
     }
@@ -2767,6 +2959,7 @@ function setupEventListeners() {
       closeAuthModal();
       DB.triggerCloudSync();
       showToast(`Berhasil masuk sebagai ${user.name}!`, 'check-circle');
+      triggerStarConfetti();
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.style.display = 'block';
@@ -2859,6 +3052,7 @@ function setupEventListeners() {
       closeAuthModal();
       DB.triggerCloudSync();
       showToast(`Nomor HP terverifikasi! Selamat datang, ${user.name}.`, 'check-circle');
+      triggerStarConfetti();
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.style.display = 'block';
@@ -3048,6 +3242,8 @@ function setupEventListeners() {
         renderCartItems();
         renderSafetyCap();
         renderAnggaranScreen();
+        renderBelanjaScreen();
+        renderMostFrequentlyBought();
       }
       return;
     }
@@ -3080,6 +3276,8 @@ function setupEventListeners() {
               renderCartItems();
               renderSafetyCap();
               renderAnggaranScreen();
+              renderBelanjaScreen();
+              renderMostFrequentlyBought();
             },
             onRemoveItem: () => openRemoveItemModal()
           });
@@ -3091,6 +3289,8 @@ function setupEventListeners() {
         renderCartItems();
         renderSafetyCap();
         renderAnggaranScreen();
+        renderBelanjaScreen();
+        renderMostFrequentlyBought();
       }
       return;
     }
@@ -3115,6 +3315,8 @@ function setupEventListeners() {
         renderCartItems();
         renderSafetyCap();
         renderAnggaranScreen();
+        renderBelanjaScreen();
+        renderMostFrequentlyBought();
         showToast(`"${item.name}" dihapus dari troli`, 'trash-2');
       }
       return;

@@ -233,6 +233,9 @@
             <div class="catalog-shelf-grid" id="catalog-shelf-grid">
               <!-- Dynamically populated by app.js -->
             </div>
+            <div class="catalog-expand-container" id="catalog-expand-container">
+              <!-- Tap to look more button dynamically populated by app.js -->
+            </div>
           </div>
 
         </section>
@@ -249,18 +252,6 @@
               <span class="keranjang-badge" id="keranjang-items-count">0 barang</span>
             </div>
             <span class="checkout-total-val" id="keranjang-total-display" style="font-size: 15px;">Rp 0</span>
-          </div>
-
-          <!-- Top Cart Action Buttons (Left: Delete All / Kosongkan, Right: Checkout Belanja) -->
-          <div class="cart-top-actions-row">
-            <button type="button" class="btn-clear-cart-danger" id="btn-clear-cart" title="Kosongkan Semua Isi Keranjang">
-              <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i>
-              <span>Kosongkan</span>
-            </button>
-            <button type="button" class="btn-primary-checkout btn-cart-top-checkout" id="btn-checkout-session">
-              <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
-              <span>Checkout Belanja</span>
-            </button>
           </div>
 
           <!-- Trolley Quick Stats Summary -->
@@ -292,10 +283,16 @@
                 <span class="scb-savings-text" id="shopee-checkout-savings">Hemat Rp 0</span>
               </div>
             </div>
-            <button type="button" class="btn-shopee-checkout" id="btn-shopee-checkout">
-              <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
-              <span id="shopee-checkout-btn-label">Checkout</span>
-            </button>
+            <div class="scb-right-actions">
+              <button type="button" class="btn-clear-cart-danger btn-shopee-clear" id="btn-clear-cart" title="Kosongkan Semua Isi Keranjang">
+                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                <span>Kosongkan</span>
+              </button>
+              <button type="button" class="btn-shopee-checkout" id="btn-shopee-checkout">
+                <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
+                <span id="shopee-checkout-btn-label">Checkout</span>
+              </button>
+            </div>
           </div>
 
         </section>
